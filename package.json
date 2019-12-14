@@ -1,0 +1,48 @@
+{
+  "name": "pouch-collection",
+  "version": "1.0.0",
+  "description": "PouchDB ORM for Typescript. Work with Multiple databases or multiple collections in a single database. Supports all platforms PouchDB supports.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "Typescript",
+    "orm",
+    "pouchdb",
+    "electron",
+    "web",
+    "react-native"
+  ],
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/iyobo/pouch-collection"
+  },
+  "scripts": {
+    "test": "jest --config jestconfig.json",
+    "test:watch": "jest --config jestconfig.json --watch",
+    "build": "tsc",
+    "prepublish": "tsc && npm test",
+    "dev": "tsc -w",
+    "lint": "tslint -c tslint.json -p tsconfig.json"
+  },
+  "files": [
+    "dist/**/*"
+  ],
+  "author": "Iyobo Eki",
+  "license": "MIT",
+  "dependencies": {
+    "async-retry": "^1.2.3",
+    "pouchdb": "^7.1.1",
+    "pouchdb-find": "^7.1.1",
+    "reflect-metadata": "^0.1.13"
+  },
+  "peerDependencies": {},
+  "devDependencies": {
+    "@types/jest": "^24.0.15",
+    "@types/lodash": "^4.14.136",
+    "jest": "^24.8.0",
+    "supertest": "^4.0.2",
+    "ts-jest": "^24.0.2",
+    "tslint": "^5.18.0",
+    "typescript": "^3.5.3"
+  }
+}
