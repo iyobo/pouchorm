@@ -6,10 +6,7 @@ PouchDB.plugin(PouchFind);
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
 const ChanceTool = require('chance');
-
-// Instantiate Chance so it can be used
 const chance = new ChanceTool();
-
 const retry = require('async-retry');
 
 
@@ -27,29 +24,32 @@ export enum CollectionState {
     READY,
 }
 
-export abstract class PouchCollection<T extends IModel> {
-
+export class PouchORM {
     static databases: { [key: string]: PouchDB.Database } = {};
-    static LOGGING = true;
+    static LOGGING = false;
+    static PouchDB = PouchDB;
 
     static getDatabase(dbName: string): any {
-        if (!PouchCollection.databases[dbName]) {
-            if (PouchCollection.LOGGING) console.log('Creating DB: ', dbName);
-            PouchCollection.databases[dbName] = new PouchDB(dbName, {adapter: 'leveldb'});
+        if (!PouchORM.databases[dbName]) {
+            if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
+            PouchORM.databases[dbName] = new PouchDB(dbName, {adapter: 'leveldb'});
         }
 
-        return PouchCollection.databases[dbName];
+        return PouchORM.databases[dbName];
     }
 
     static async clearDatabase(dbName: string) {
 
-        const db = PouchCollection.getDatabase(dbName);
+        const db = PouchORM.getDatabase(dbName);
 
         const result = await db.allDocs();
         return Promise.all(result.rows.map(function (row) {
             return db.remove(row.id, row.value.rev);
         }));
     }
+}
+
+export abstract class PouchCollection<T extends IModel> {
 
 
     _state = CollectionState.NEW;
@@ -59,10 +59,10 @@ export abstract class PouchCollection<T extends IModel> {
     private indexes: { fields: (keyof T)[]; name?: string }[] = [];
 
 
-    constructor(dbname: string) {
-        this.db = PouchCollection.getDatabase(dbname);
+    constructor(dbname: string, opts?: {}) {
+        this.db = PouchORM.getDatabase(dbname);
         this.collectionTypeName = this.constructor.name;
-        if (PouchCollection.LOGGING) console.log('initializing collection :', this.collectionTypeName);
+        if (PouchORM.LOGGING) console.log('initializing collection :', this.collectionTypeName);
     }
 
     async checkInit(): Promise<void> {
@@ -139,35 +139,43 @@ export abstract class PouchCollection<T extends IModel> {
         });
     }
 
-    async find(criteria?: Partial<T>): Promise<T[]> {
+    async find(
+        selector?: Partial<T> | { [key: string]: any },
+        opts?: { sort?: string[], limit?: number },
+    ): Promise<T[]> {
+
         await this.checkInit();
-        criteria.$collectionType = this.collectionTypeName;
+        selector.$collectionType = this.collectionTypeName;
 
         const {docs} = await this.db.find({
-            // @ts-ignore
-            selector: criteria||{}
-            // sort: sort //TODO: figure this out
+            selector: selector || {},
+            sort: opts?.sort || undefined,// FIXME: ensure this works
+            limit: opts?.limit
         });
-        return docs;
+
+        return docs as T[];
     }
 
-    async findOrFail(criteria?: Partial<T>): Promise<T[]> {
-        const docs = await this.find(criteria);
+    async findOne(selector: Partial<T> | { [key: string]: any }): Promise<T> {
+        const matches = await this.find(selector, {limit: 1});
+        return matches.length > 0 ? matches[0] : null;
+    }
+
+    async findOrFail(
+        selector?: Partial<T> | { [key: string]: any },
+        opts?: { sort?: string[], limit?: number },
+    ): Promise<T[]> {
+        const docs = await this.find(selector, opts);
 
         if (!Array.isArray(docs) || docs.length === 0) {
-            throw new Error(`${this.constructor.name} of criteria ${criteria} does not exist`);
+            throw new Error(`${this.constructor.name} of criteria ${selector} does not exist`);
         }
 
         return docs;
     }
 
-    async findOne(criteria: Partial<T>): Promise<T> {
-        const matches = await this.find(criteria);
-        return matches.length > 0 ? matches[0] : null;
-    }
-
-    async findOneOrFail(criteria: Partial<T>): Promise<T> {
-        const matches = await this.findOrFail(criteria);
+    async findOneOrFail(selector: Partial<T> | { [key: string]: any }): Promise<T> {
+        const matches = await this.findOrFail(selector, {limit: 1});
         return matches[0];
     }
 
@@ -183,13 +191,13 @@ export abstract class PouchCollection<T extends IModel> {
     async removeById(id: string): Promise<void> {
 
         const doc: T = await this.findById(id);
-        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB removeById', doc);
+        if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB removeById', doc);
         if (doc) await this.db.remove(doc._id, doc._rev);
     }
 
     async remove(item: T): Promise<void> {
 
-        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB remove', item);
+        if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB remove', item);
         if (item) await this.db.remove(item._id, item._rev);
     }
 
@@ -214,20 +222,20 @@ export abstract class PouchCollection<T extends IModel> {
 
         if (existing) {
             item._rev = existing._rev;
-            if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB updating', item);
+            if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB updating', item);
         } else {
-            if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB create', item);
+            if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB create', item);
         }
 
 
         this.setMetaFields(item);
 
-        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB beforeSave', item);
+        if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB beforeSave', item);
 
         await this.db.put(item, {force: true});
 
         const doc = await this.findById(item._id);
-        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB afterSave', doc);
+        if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB afterSave', doc);
         return doc;
     }
 

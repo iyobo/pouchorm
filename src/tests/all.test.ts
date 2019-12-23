@@ -1,8 +1,7 @@
 // Person.ts
 
-import {PouchCollection} from '../index';
+import {PouchCollection, PouchORM} from '../index';
 
-PouchCollection.LOGGING = false;
 import {Fight, FightCollection, Person, PersonCollection} from './util/TestClasses';
 
 
@@ -27,7 +26,7 @@ describe('PouchCollection Instance', () => {
     let fightCollection: FightCollection = new FightCollection('unit_test');
 
     beforeEach(async () => {
-        await PersonCollection.clearDatabase('unit_test');
+        await PouchORM.clearDatabase('unit_test');
     });
 
     describe('upsert', () => {

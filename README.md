@@ -1,4 +1,4 @@
-# pouch-orm
+# PouchORM
 
 A solid ORM for working with PouchDB.
 - Typescript is a first class citizen.
@@ -6,13 +6,13 @@ A solid ORM for working with PouchDB.
 - Work with the concept of collections and pouch databases
   - Multiple collections in a single Database
   - Multiple collections in multiple Databases
-- Supports web,  electron, react-native, and anything else pouchdb supports.
+- Supports web, electron, react-native, and anything else pouchdb supports.
 
 ## To install
-`npm i pouch-collection`
+`npm i pouchorm`
 
 or if you prefer yarn:
-`yarn add pouch-collection`
+`yarn add pouchorm`
 
 ## How to Use
 
@@ -20,7 +20,8 @@ Consider this definition of a model and it's collection.
 ```$xslt
 // Person.ts
 
-    import {IModel, PouchCollection} from "pouch-collection";
+    import {IModel, PouchCollection, PouchORM} from "pouchorm";
+    PouchORM.LOGGING = true; // enable diagnostic logging if desired
     
     export interface IPerson extends IModel {
         name: string;
@@ -45,7 +46,7 @@ Consider this definition of a model and it's collection.
     
 ```
 
-`IModel` contains the meta fields needed by pouchdb and pouch-collections to operate so every model interface definition 
+`IModel` contains the meta fields needed by PouchDB and PouchORM to operate so every model interface definition 
 needs to extend it. Only supports the same field types as pouchDB does.
 
 `PouchCollection` is a generic abstract class that should be given your model type. 
@@ -106,43 +107,63 @@ We are ready to start CRUDing!
 
 ```
 
-## Collection API reference
+## PouchCollection instance API reference
 Considering that `T` is the provided type definition of your model:
 
 - `find(criteria: Partial<T>): Promise<T[]>`
-    
-
 - `findOrFail(criteria: Partial<T>): Promise<T[]>`
-
-
 - `findOne(criteria: Partial<T>): Promise<T>`
-
-
 - `findOneOrFail(criteria: Partial<T>): Promise<T>`
-
-
 - `findById(_id: string): Promise<T>`
-
-
 - `findByIdOrFail(_id: string): Promise<T>`
 
-
-
 - `removeById(id: string): Promise<void>`
-
+- `remove(item: T): Promise<void>`
 
 - `upsert(item: T): Promise<T>`
 
-- `bulkUpsert(items: T[]): Promise<T>`
+- `bulkUpsert(items: T[]): Promise<(Response|Error)[]>`
+- `bulkRemove(items: T[]): Promise<(Response|Error)[]>`
 
-- `bulkRemove(items: T[]): Promise<T>`
+## PouchORM metadata
 
-You also have access to a collection instance's internal pouchdb reference e.g `collectionInstance.db.find`, 
-but that should NEVER be used to manipulate data. 
-For data manipulation, it is best to rely on the exposed functions provided by the collection instance because of the way pouch-collections wraps the pouch data.
+PouchORM adds some metadata fields to each documents to make certain features possible.
+Key of which are `$timestamp` and `$collectionType`.
+
+### $timestamp 
+This gets updated with a unix timestamp upon upserting a document.
+This is also auto-indexed for time-sensitive ordering 
+(i.e so items don't show up in random locations in results each time, which can be disconcerting)
+
+### $collectionType 
+There is no concept of tables or collections in PouchDB. Only databases.
+This field helps us differentiate what collection each document belongs to.
+This is also auto-indexed for your convenience.
+
+## Installing PouchDB plugins
+
+You can access the base PouchDB module used by PouchORM with `PouchORM.PouchDB`.
+You can install plugins you need with that e.g `PouchORM.PouchDB.plugin(...)`.
+PouchORM already comes with the plugin `pouchdb-find` which is essential for any useful querying of the database.
+
+## Accessing the raw pouchdb database
+Every instance has a reference to the internally instantiated db `collectionInstance.db` that you can use 
+to reference other methods of the raw pouch db instance e.g `personCollection.db.putAttachment(...)`.
+
+You can use this for anything that does not directly involve accessing documents e.g adding an attachment is fine.
+But caution must be followed when you want to use this to manipulate a document directly, as pouch orm marks documents with 
+helpful metadata it uses to enhance your development experience, particularly $timestamp and $collectionType. 
+ 
+It is generally better to rely on the exposed functions in your collection instance.
 
 If you want more pouchdb feature support, feel free to open an issue. This library is also very simple 
 to grok, so feel free to send in a PR! 
 
+
+## Supporting the Project
+If you use PouchORM and it's helping you do awesome stuff, be a sport and  <a href="https://www.buymeacoffee.com/iyobo" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> or <a href="https://www.patreon.com/bePatron?u=19661939" data-patreon-widget-type="become-patron-button">Become a Patron!</a>. PRs are also welcome.
 NOTE: Tests required for new PR acceptance. Those are easy to make as well.
    
+# Contributors
+
+- Iyobo Eki
