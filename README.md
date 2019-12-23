@@ -142,5 +142,7 @@ but that should NEVER be used to manipulate data.
 For data manipulation, it is best to rely on the exposed functions provided by the collection instance because of the way pouch-collections wraps the pouch data.
 
 If you want more pouchdb feature support, feel free to open an issue. This library is also very simple 
-to grok, so feel free to send in a PR!
+to grok, so feel free to send in a PR! 
+
+NOTE: Tests required for new PR acceptance. Those are easy to make as well.
    
