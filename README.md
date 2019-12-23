@@ -1,6 +1,13 @@
 # PouchORM
 
 A solid ORM for working with PouchDB.
+The Pouch/Couch database ecosystem is still the best choice for client-side products that needs the complex 
+(and seemingly oxymoronic) feature mix of Offline-First **and** Realtime collaboration.
+
+But the base pouchDB interface is rather bare. This ORM does a lot of the heavy lifting for you and makes it easy to get going with PouchDB so 
+you can focus on your data, and not the tool.
+
+## Highlights
 - Typescript is a first class citizen.
   - Will work with raw javascript, but you'll be missing out on the cool Typescript dev perks.
 - Work with the concept of collections and pouch databases
