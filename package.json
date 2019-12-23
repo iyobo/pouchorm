@@ -31,6 +31,7 @@
   "license": "MIT",
   "dependencies": {
     "async-retry": "^1.2.3",
+    "chance": "^1.1.4",
     "pouchdb": "^7.1.1",
     "pouchdb-find": "^7.1.1",
     "reflect-metadata": "^0.1.13"
@@ -39,6 +40,8 @@
   "devDependencies": {
     "@types/jest": "^24.0.15",
     "@types/lodash": "^4.14.136",
+    "@types/node": "^12.12.17",
+    "@types/pouchdb": "^6.4.0",
     "jest": "^24.8.0",
     "supertest": "^4.0.2",
     "ts-jest": "^24.0.2",

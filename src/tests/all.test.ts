@@ -1,92 +1,195 @@
-import {BadParentClass, GoodParentClass, SoloClass} from './util/TestClasses';
+// Person.ts
 
-describe('Without uncircled', () => {
-    it('when serializing, throws Circular structure error if not inheriting ParentClassNode', () => {
-        try {
-            const parent = new BadParentClass();
-            const serializedClass = JSON.stringify(parent);
+import {PouchCollection} from '../index';
 
-            fail('The last line should have thrown an error');
-        } catch (err) {
-            // This will either be a circular reference error or a maximum call stack error
-        }
+PouchCollection.LOGGING = false;
+import {Fight, FightCollection, Person, PersonCollection} from './util/TestClasses';
+
+
+function makePerson(): Person {
+    return {
+        name: 'Spyder',
+        age: 40,
+    };
+}
+
+function makeFight(personAId: string, personBId?: string): Fight {
+    return {
+        personAId,
+        personBId
+    };
+}
+
+describe('PouchCollection Instance', () => {
+
+
+    let personCollection: PersonCollection = new PersonCollection('unit_test');
+    let fightCollection: FightCollection = new FightCollection('unit_test');
+
+    beforeEach(async () => {
+        await PersonCollection.clearDatabase('unit_test');
     });
-});
 
-describe('With Uncircle', () => {
-    it('serializes', () => {
+    describe('upsert', () => {
+        it('creates new documents if does not exist', async () => {
 
-        const parent = new GoodParentClass();
-        const serializedClass = JSON.stringify(parent).replace(/\\/g, '');
+            const p = makePerson();
+            expect(p._id).toBeUndefined();
+            expect(p._rev).toBeUndefined();
 
-        expect(serializedClass).toEqual('{"foo":"bar","childStore":{"ab":"wonton","myDate":"1970-01-01T00:16:40.000Z","child":{"mn":"Fiery","op":"jutsu"}}}');
+            const person: Person = await personCollection.upsert(p) as Person;
+
+            expect(person).toBeTruthy();
+            expect(person.name).toBe(makePerson().name);
+            expect(person._id).toBeTruthy();
+            expect(person._rev).toBeTruthy();
+            expect(person.$collectionType).toBeTruthy();
+            expect(person.$timestamp).toBeTruthy();
+        });
+        it('updates documents if exist', async () => {
+
+            const p = makePerson();
+            const person = await personCollection.upsert(p);
+            expect(person.age).toBe(p.age);
+
+            person.age = 501;
+            const updatedPerson = await personCollection.upsert(person);
+            expect(updatedPerson.age).toBe(501);
+        });
+    });
+    describe('bulkUpsert', () => {
+        it('creates documents in array', async () => {
+
+            const bulkPersons = await personCollection.bulkUpsert([
+                {
+                    name: 'tifa',
+                    age: 25
+                },
+                {
+                    name: 'cloud',
+                    age: 28
+                },
+                {
+                    name: 'sephiroth',
+                    age: 999
+                },
+            ]);
+
+            expect(bulkPersons).toHaveLength(3);
+            expect(bulkPersons[0].id).toBeTruthy();
+            expect(bulkPersons[1].id).toBeTruthy();
+            expect(bulkPersons[2].id).toBeTruthy();
+        });
+        it('updates documents in an array', async () => {
+
+            const p = makePerson();
+            const person = await personCollection.upsert(p);
+            expect(person._id).toBeTruthy();
+
+            person.age = 57;
+            const bulkPersons = await personCollection.bulkUpsert([
+                {
+                    name: 'tifa',
+                    age: 25
+                },
+                {
+                    name: 'cloud',
+                    age: 28
+                },
+                {
+                    name: 'sephiroth',
+                    age: 999
+                },
+                person
+            ]);
+
+            expect(bulkPersons).toHaveLength(4);
+            expect(bulkPersons[0].id).toBeTruthy();
+            expect(bulkPersons[1].id).toBeTruthy();
+            expect(bulkPersons[2].id).toBeTruthy();
+            expect(bulkPersons[3].id).toBeTruthy();
+            expect(bulkPersons[3].id).toBe(person._id);
+        });
     });
 
-    it('deserializes JSON object', () => {
-        const parent: GoodParentClass = new GoodParentClass();
+    describe('with data', () => {
 
-        parent.deserialize({foo: 'wopo'});
+        let bulkPersons;
+        beforeEach(async () => {
 
-        expect(parent.foo).toBe('wopo');
-    });
-    it('deserializes JSON String', () => {
-        const parent: GoodParentClass = new GoodParentClass();
+            bulkPersons = await personCollection.bulkUpsert([
+                {
+                    name: 'tifa',
+                    age: 25
+                },
+                {
+                    name: 'cloud',
+                    age: 28
+                },
+                {
+                    name: 'Kingsley',
+                    age: 28
+                },
+                {
+                    name: 'sephiroth',
+                    age: 999
+                },
+            ]);
+            expect(bulkPersons).toHaveLength(4);
 
-        parent.deserialize(`{"foo":"wopo"}`);
-
-        expect(parent.foo).toBe('wopo');
-    });
-    it('deserializes JSON nested Object', () => {
-        const parent: GoodParentClass = new GoodParentClass();
-
-        parent.deserialize({
-            foo: 'wopo',
-            childStore: {
-                ab: 'why'
-            }
         });
 
-        expect(parent.foo).toBe('wopo');
-        expect(parent.childStore.ab).toBe('why');
+        describe('finding with', () => {
+            describe('find', () => {
+                it('gets all items matching indexed fields', async () => {
+
+                    const guys = await personCollection.find({age: 28});
+                    expect(guys).toHaveLength(2);
+                });
+                it('gets all items matching non-indexed fields', async () => {
+
+                    const guys = await personCollection.find({name: 'Kingsley'});
+                    expect(guys).toHaveLength(1);
+                });
+            });
+
+            describe('findById', () => {
+                it('gets item by id', async () => {
+
+                    const tifa = await personCollection.findById(bulkPersons[0].id);
+                    expect(tifa).toBeTruthy();
+                    expect(tifa._id).toBe(bulkPersons[0].id);
+                    expect(tifa.name).toBe('tifa');
+                });
+
+                it('returns null if item does not exist', async () => {
+
+                    const nada = await personCollection.findById('zilch');
+                    expect(nada).toBeFalsy();
+                });
+            });
+        });
+        describe('removeById', () => {
+
+            it('removes by id', async () => {
+
+                const p1 = await personCollection.find({});
+                expect(p1).toHaveLength(4);
+
+                const cloud = await personCollection.findById(p1[1]._id);
+                expect(cloud).toBeTruthy();
+
+                await personCollection.removeById(cloud._id)
+
+                const p2 = await personCollection.find({});
+                expect(p2).toHaveLength(3);
+
+                const cloud2 = await personCollection.findById(p1[1]._id);
+                expect(cloud2).toBeFalsy();
+
+            });
+
+        })
     });
-    it('deserializes JSON nested string', () => {
-        const parent: GoodParentClass = new GoodParentClass();
 
-        parent.deserialize(`{
-            "foo": "wopo",
-            "childStore": {
-                "ab": "why"
-            }
-        }`);
-
-        expect(parent.foo).toBe('wopo');
-        expect(parent.childStore.ab).toBe('why');
-    });
-    it('can deserialize serialize output', () => {
-        const parent: GoodParentClass = new GoodParentClass();
-        parent.foo = 'super';
-        parent.childStore.ab = 'duper';
-        const serializedTree = JSON.stringify(parent);
-
-        parent.deserialize(serializedTree);
-
-        expect(parent.foo).toBe('super');
-        expect(parent.childStore.ab).toBe('duper');
-    });
-
-    it('can deserialize serialize output for solo class', () => {
-        const solo: SoloClass = new SoloClass();
-        solo.spider = 'girl';
-        solo.justiceLeague.spiderMan = true;
-        const serializedTree = JSON.stringify(solo);
-
-        const newSolo = new SoloClass();
-        expect(newSolo.spider).toBe('man');
-
-        newSolo.deserialize(serializedTree);
-
-        expect(newSolo.spider).toBe('girl');
-        expect(newSolo.justiceLeague.spiderMan).toBe(true);
-    });
 });
-

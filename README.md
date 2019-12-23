@@ -2,9 +2,11 @@
 
 A solid ORM for working with PouchDB.
 - Typescript is a first class citizen.
+  - Will work with raw javascript, but you'll be missing out on the cool Typescript dev perks.
 - Work with the concept of collections and pouch databases
   - Multiple collections in a single Database
   - Multiple collections in multiple Databases
+- Supports web,  electron, react-native, and anything else pouchdb supports.
 
 ## To install
 `npm i pouch-collection`
@@ -16,8 +18,9 @@ or if you prefer yarn:
 
 Consider this definition of a model and it's collection.
 ```$xslt
+// Person.ts
+
     import {IModel, PouchCollection} from "pouch-collection";
-    
     
     export interface IPerson extends IModel {
         name: string;
@@ -25,46 +28,119 @@ Consider this definition of a model and it's collection.
         otherInfo: { [key: string]: any };
     }
     
-    export class Person extends PouchCollection<IPerson> {
-        async init(): Promise<void> {
-            await this.addIndex(['entityTemplateId']);
-    
-            await super.init();
+    export class PersonCollection extends PouchCollection<IPerson> {
+        
+        // Optional. Overide to define collection-specific indexes.
+        async beforeInit(): Promise<void> {
+            
+            await this.addIndex(['age']); // be sure to create an index for what you plan to filter by.
+        }
+
+        // Optional. Overide to perform actions after all the necessary indexes have been created.
+        async afterInit(): Promise<void> {
+           
         }
     
     }
     
-
 ```
 
-The Root-store pattern is a declarative tree of classes that each know their parents, contents and children.
-This is the reccomended way of using some state management libraries like MOBX.
+`IModel` contains the meta fields needed by pouchdb and pouch-collections to operate so every model interface definition 
+needs to extend it. Only supports the same field types as pouchDB does.
 
-### Serializing
-Any of the field decorators you use in a class, injects that class with a special `toJSON()` function that eliminates circulars (assuming you used the proper field decorators0) which is used by 
-javascript to automatically serialize any object or to stringify it you call `JSON.stringify`.
+`PouchCollection` is a generic abstract class that should be given your model type. 
+This helps it guide you later and give you suggestions of how to work with your model.
 
-We can take our entire store tree implementation from the root and serialize it for transmission i.e turn to string. 
-If you were using this with mobx and SSR, you would do this server side 
+If you need to do things before and after initialization, you can override the async hook functions: `beforeInit` 
+or `afterInit`;
+
+Now that we have defined our **Model** and a **Collection** for that model, Here is how we instantiate collections.
+You should probably define and export collection instances somewhere in your codebase that you can easily import 
+anywhere in your app.
+       
 ```$xslt
-const str = JSON.stringify(store);
+
+    // instantiate a collection by giving it the dbname it should use
+    export const personCollection: PersonCollection = new Person('db1');
+
+    // Another collection. Notice how it shares the same dbname we passed into the previous collection instance.
+    export const someOtherCollection: SomeOtherCollection = new SomeOtherCollection('db1'); 
+    
+    // In case we needed the same model but for a different database
+    export const personCollection: PersonCollection = new Person('db2');
+
 ```
-`str` is now the string representation of your entire store tree.
 
-### Deserializing
-
-Remember that `@Deserialize` decorator? Well it injected a member function into your root class called `deserialize(stringOrObject)`.
-It can accept a json string or a fully json parsed javascript object. Either works!
-
-Assuming you have passed in that `str` from the server to the client, you can do this client-side to hydrate the 
-contents of the store tree to as it existed in the server.
+From this point:
+ - We have our definitions
+ - We have our collection instances
+ 
+We are ready to start CRUDing!
 
 ```$xslt
-store.deserialize(strFromServer);
+    import {personCollection} from '...'
+
+    // Using collections
+    let somePerson: IPerson = {
+        name: 'Basket Mouth',
+        age: 99,
+    }
+    let anotherPerson: IPerson = {
+        name: 'Bovi',
+        age: 45,
+    }
+
+    somePerson = await personCollection.upsert(somePerson);
+    anotherPerson = await personCollection.upsert(anotherPerson);
+    
+    // somePerson has been persisted and will now also have some metafields like _id, _rev, etc.
+
+    somePerson.age = 45;
+    somePerson = await personCollection.upsert(somePerson);
+
+    // changes to somePerson has been persisted. _rev would have also changed.
+
+    const result: IPerson[] = await personCollection.find({age: 45})
+    
+    // result.length === 2
+
 ```
 
-And that's it!
+## Collection API reference
+Considering that `T` is the provided type definition of your model:
 
-Now your client-side store has been fully hydrated and all values will be the same as you had them in the server.
+- `find(criteria: Partial<T>): Promise<T[]>`
+    
+
+- `findOrFail(criteria: Partial<T>): Promise<T[]>`
 
 
+- `findOne(criteria: Partial<T>): Promise<T>`
+
+
+- `findOneOrFail(criteria: Partial<T>): Promise<T>`
+
+
+- `findById(_id: string): Promise<T>`
+
+
+- `findByIdOrFail(_id: string): Promise<T>`
+
+
+
+- `removeById(id: string): Promise<void>`
+
+
+- `upsert(item: T): Promise<T>`
+
+- `bulkUpsert(items: T[]): Promise<T>`
+
+- `bulkRemove(items: T[]): Promise<T>`
+
+You also have access to a collection instance's internal pouchdb reference e.g `collectionInstance.db.find`, 
+but that should NEVER be used to manipulate data. 
+For data manipulation, it is best to rely on the exposed functions provided by the collection instance because of the way pouch-collections wraps the pouch data.
+
+If you want more pouchdb feature support, feel free to open an issue. This library is also very simple 
+to grok, so feel free to send in a PR!
+   
