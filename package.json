@@ -5,16 +5,17 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
-    "Typescript",
-    "orm",
     "pouchdb",
+    "orm",
+    "odm",
+    "Typescript",
     "electron",
     "web",
     "react-native"
   ],
   "repository": {
     "type": "github",
-    "url": "https://github.com/iyobo/pouch-collection"
+    "url": "https://github.com/iyobo/pouchorm"
   },
   "scripts": {
     "test": "jest --config jestconfig.json",
