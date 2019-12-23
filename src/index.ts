@@ -139,19 +139,19 @@ export abstract class PouchCollection<T extends IModel> {
         });
     }
 
-    async find(criteria: Partial<T>): Promise<T[]> {
+    async find(criteria?: Partial<T>): Promise<T[]> {
         await this.checkInit();
         criteria.$collectionType = this.collectionTypeName;
 
         const {docs} = await this.db.find({
             // @ts-ignore
-            selector: criteria
+            selector: criteria||{}
             // sort: sort //TODO: figure this out
         });
         return docs;
     }
 
-    async findOrFail(criteria: Partial<T>): Promise<T[]> {
+    async findOrFail(criteria?: Partial<T>): Promise<T[]> {
         const docs = await this.find(criteria);
 
         if (!Array.isArray(docs) || docs.length === 0) {
@@ -183,8 +183,14 @@ export abstract class PouchCollection<T extends IModel> {
     async removeById(id: string): Promise<void> {
 
         const doc: T = await this.findById(id);
-        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB remove', doc);
+        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB removeById', doc);
         if (doc) await this.db.remove(doc._id, doc._rev);
+    }
+
+    async remove(item: T): Promise<void> {
+
+        if (PouchCollection.LOGGING) console.log(this.constructor.name + ' PouchDB remove', item);
+        if (item) await this.db.remove(item._id, item._rev);
     }
 
     private setMetaFields = (item: T) => {
@@ -236,6 +242,5 @@ export abstract class PouchCollection<T extends IModel> {
         const result = await this.db.bulkDocs(items.map(this.markDeleted));
         return result;
     }
-
 
 }

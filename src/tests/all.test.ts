@@ -188,6 +188,16 @@ describe('PouchCollection Instance', () => {
                 expect(cloud2).toBeFalsy();
 
             });
+        })
+        describe('bulkRemove', () => {
+
+            it('removes all documents in array from database', async () => {
+                const guys = await personCollection.find({age: 28});
+                await personCollection.bulkRemove(guys);
+
+                const newguys = await personCollection.find({age: 28});
+                expect(newguys).toHaveLength(0);
+            });
 
         })
     });
