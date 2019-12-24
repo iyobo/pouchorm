@@ -67,3 +67,4 @@ typings/
 .next
 
 dist/
+unit_test*

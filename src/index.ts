@@ -29,10 +29,15 @@ export class PouchORM {
     static LOGGING = false;
     static PouchDB = PouchDB;
 
-    static getDatabase(dbName: string, opts?: any): any {
+    static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
         if (!PouchORM.databases[dbName]) {
             if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
             PouchORM.databases[dbName] = new PouchDB(dbName, opts);
+        }
+
+        //ensure opts match up with database being returned
+        if (opts) {
+
         }
 
         return PouchORM.databases[dbName];
@@ -59,7 +64,7 @@ export abstract class PouchCollection<T extends IModel> {
     private indexes: { fields: (keyof T)[]; name?: string }[] = [];
 
 
-    constructor(dbname: string, opts?: {}) {
+    constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration) {
         this.db = PouchORM.getDatabase(dbname, opts);
         this.collectionTypeName = this.constructor.name;
         if (PouchORM.LOGGING) console.log('initializing collection :', this.collectionTypeName);
