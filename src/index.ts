@@ -148,12 +148,12 @@ export abstract class PouchCollection<T extends IModel> {
         selector?: Partial<T> | { [key: string]: any },
         opts?: { sort?: string[], limit?: number },
     ): Promise<T[]> {
-
+        const sel = selector || {}
         await this.checkInit();
-        selector.$collectionType = this.collectionTypeName;
+        sel.$collectionType = this.collectionTypeName;
 
         const {docs} = await this.db.find({
-            selector: selector || {},
+            selector: sel,
             sort: opts?.sort || undefined,// FIXME: ensure this works
             limit: opts?.limit
         });
