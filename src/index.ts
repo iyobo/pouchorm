@@ -54,6 +54,12 @@ export class PouchORM {
     }
 }
 
+export class PouchModel implements IModel {
+    constructor (doc: PouchModel) {
+        Object.assign(this, doc);
+    }
+}
+
 export abstract class PouchCollection<T extends IModel> {
 
 
