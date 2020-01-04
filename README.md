@@ -88,13 +88,13 @@ anywhere in your app.
 ```typescript
 
     // instantiate a collection by giving it the dbname it should use
-    export const personCollection: PersonCollection = new Person('db1');
+    export const personCollection: PersonCollection = new PersonCollection('db1');
 
     // Another collection. Notice how it shares the same dbname we passed into the previous collection instance.
     export const someOtherCollection: SomeOtherCollection = new SomeOtherCollection('db1'); 
     
     // In case we needed the same model but for a different database
-    export const personCollection: PersonCollection = new Person('db2');
+    export const personCollection: PersonCollection = new PersonCollection('db2');
 
 ```
 
