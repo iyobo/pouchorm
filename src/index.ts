@@ -83,7 +83,7 @@ export function UpsertHelper(item: any) {
     };
 }
 
-export class PouchModel<T> implements IModel {
+export abstract class PouchModel<T> implements IModel {
     constructor (item: T) {
         Object.assign(this, item);
     }

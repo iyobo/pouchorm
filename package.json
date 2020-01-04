@@ -43,7 +43,6 @@
     "@types/lodash": "^4.14.149",
     "@types/node": "^12.12.24",
     "@types/pouchdb": "^6.4.0",
-    "class-validator": "^0.11.0",
     "jest": "^24.8.0",
     "supertest": "^4.0.2",
     "ts-jest": "^24.2.0",
