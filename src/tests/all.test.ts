@@ -1,8 +1,8 @@
 // Person.ts
 
-import {PouchCollection, PouchORM} from '../index';
-
-import {Fight, FightCollection, Person, PersonCollection} from './util/TestClasses';
+import {PouchCollection, PouchORM, ClassValidate, UpsertHelper} from '../index';
+import {Fight, FightCollection, Person, PersonCollection, AccountCollection, Account} from './util/TestClasses';
+import { ValidationError } from 'class-validator';
 
 
 function makePerson(): Person {
@@ -22,8 +22,9 @@ function makeFight(personAId: string, personBId?: string): Fight {
 describe('PouchCollection Instance', () => {
 
 
-    let personCollection: PersonCollection = new PersonCollection('unit_test');
-    let fightCollection: FightCollection = new FightCollection('unit_test');
+    const personCollection: PersonCollection = new PersonCollection('unit_test');
+    const fightCollection: FightCollection = new FightCollection('unit_test');
+    const accountCollection: AccountCollection = new AccountCollection('unit_test');
 
     beforeEach(async () => {
         await PouchORM.clearDatabase('unit_test');
@@ -54,6 +55,16 @@ describe('PouchCollection Instance', () => {
             person.age = 501;
             const updatedPerson = await personCollection.upsert(person);
             expect(updatedPerson.age).toBe(501);
+        });
+        it('updates documents with delta function', async () => {
+
+            const p = makePerson();
+            const person = await personCollection.upsert(p);
+            expect(person.age).toBe(p.age);
+
+            person.age = 70;
+            const updatedPerson = await personCollection.upsert(person, UpsertHelper(person).merge);
+            expect(updatedPerson.age).toBe(70);
         });
     });
     describe('bulkUpsert', () => {
@@ -178,7 +189,7 @@ describe('PouchCollection Instance', () => {
                 const cloud = await personCollection.findById(p1[1]._id);
                 expect(cloud).toBeTruthy();
 
-                await personCollection.removeById(cloud._id)
+                await personCollection.removeById(cloud._id);
 
                 const p2 = await personCollection.find({});
                 expect(p2).toHaveLength(3);
@@ -187,7 +198,7 @@ describe('PouchCollection Instance', () => {
                 expect(cloud2).toBeFalsy();
 
             });
-        })
+        });
         describe('bulkRemove', () => {
 
             it('removes all documents in array from database', async () => {
@@ -198,7 +209,36 @@ describe('PouchCollection Instance', () => {
                 expect(newguys).toHaveLength(0);
             });
 
-        })
+        });
+        describe('upsert with', () => {
+
+            it('new instance of class Model', async () => {
+                const a = new Account({
+                    name: 'Spyder',
+                    age: 32
+                });
+                const account = await accountCollection.upsert(a);
+                expect(account.age).toBe(a.age);
+            });
+            it('validation of class Model properties', async () => {
+                const a = new Account({
+                    name: 'Spyder',
+                    age: '32' as any
+                });
+                let error: ValidationError[];
+
+                PouchORM.VALIDATE = ClassValidate.ON_AND_REJECT;
+
+                try {
+                    await accountCollection.upsert(a);
+                } catch (err) {
+                    error = err;
+                }
+
+                expect(error[0]).toBeInstanceOf(ValidationError);
+            });
+
+        });
     });
 
 });
