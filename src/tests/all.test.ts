@@ -125,6 +125,8 @@ describe('PouchCollection Instance', () => {
     describe('with data', () => {
 
         let bulkPersons;
+        let bulkAccounts;
+
         beforeEach(async () => {
 
             bulkPersons = await personCollection.bulkUpsert([
@@ -143,33 +145,62 @@ describe('PouchCollection Instance', () => {
                 {
                     name: 'sephiroth',
                     age: 999
-                },
+                }
             ]);
             expect(bulkPersons).toHaveLength(4);
+
+            bulkAccounts = await accountCollection.bulkUpsert([
+                new Account({
+                    name: 'Darmok',
+                    age: 202
+                }),
+                new Account({
+                    name: 'Jalad',
+                    age: 102
+                }),
+                new Account({
+                    name: 'Tanagra',
+                    age: 102
+                })
+            ]);
+            expect(bulkAccounts).toHaveLength(3);
 
         });
 
         describe('finding with', () => {
             describe('find', () => {
-                it('gets all items matching indexed fields', async () => {
+                it('gets all interface-based items matching indexed fields', async () => {
 
                     const guys = await personCollection.find({age: 28});
                     expect(guys).toHaveLength(2);
                 });
-                it('gets all items matching non-indexed fields', async () => {
+                it('gets all interface-based items matching non-indexed fields', async () => {
 
                     const guys = await personCollection.find({name: 'Kingsley'});
                     expect(guys).toHaveLength(1);
                 });
+                it('gets all class-based items matching indexed fields', async () => {
+
+                    const accounts = await accountCollection.find({age: 102});
+                    expect(accounts).toHaveLength(2);
+                });
             });
 
             describe('findById', () => {
-                it('gets item by id', async () => {
+                it('gets interface-based item by id', async () => {
 
                     const tifa = await personCollection.findById(bulkPersons[0].id);
                     expect(tifa).toBeTruthy();
                     expect(tifa._id).toBe(bulkPersons[0].id);
                     expect(tifa.name).toBe('tifa');
+                });
+
+                it('gets class-based item by id', async () => {
+
+                    const jalad = await accountCollection.findById(bulkAccounts[1].id);
+                    expect(jalad).toBeTruthy();
+                    expect(jalad._id).toBe(bulkAccounts[1].id);
+                    expect(jalad.name).toBe('Jalad');
                 });
 
                 it('returns null if item does not exist', async () => {
