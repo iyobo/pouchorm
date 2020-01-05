@@ -1,5 +1,6 @@
 import PouchDB from 'pouchdb';
 import PouchFind from 'pouchdb-find';
+import * as ClassValidator from 'class-validator';
 
 PouchDB.plugin(PouchFind);
 
@@ -24,9 +25,18 @@ export enum CollectionState {
     READY,
 }
 
+export enum ClassValidate {
+    OFF,
+    ON,
+    ON_AND_LOG,
+    ON_AND_REJECT
+}
+
 export class PouchORM {
     static databases: { [key: string]: PouchDB.Database } = {};
     static LOGGING = false;
+    static VALIDATE = ClassValidate.OFF;
+    static ClassValidator: typeof ClassValidator;
     static PouchDB = PouchDB;
 
     static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
@@ -35,7 +45,7 @@ export class PouchORM {
             PouchORM.databases[dbName] = new PouchDB(dbName, opts);
         }
 
-        //ensure opts match up with database being returned
+        // ensure opts match up with database being returned
         if (opts) {
 
         }
@@ -52,6 +62,37 @@ export class PouchORM {
             return db.remove(row.id, row.value.rev);
         }));
     }
+
+    static getClassValidator() {
+        let classValidator: typeof ClassValidator;
+
+        try {
+            classValidator = require('class-validator');
+        } catch (error) {
+            console.log('Error initializing validator: ', error);
+        }
+
+        return PouchORM.ClassValidator = classValidator;
+    }
+}
+
+export function UpsertHelper(item: any) {
+    return {
+        merge: (existing: any) => ({...existing, ...item, _rev: existing._rev }),
+        replace: (existing: any) => ({ ...item, _rev: existing._rev })
+    };
+}
+
+export abstract class PouchModel<T> implements IModel {
+    constructor (item: T) {
+        Object.assign(this, item);
+    }
+
+    _id?: string;
+    _rev?: string;
+    _deleted?: boolean;
+    $timestamp?: number;
+    $collectionType?: string;
 }
 
 export abstract class PouchCollection<T extends IModel> {
@@ -60,13 +101,15 @@ export abstract class PouchCollection<T extends IModel> {
     _state = CollectionState.NEW;
     db: PouchDB.Database;
     collectionTypeName: string;
+    validate: ClassValidate;
 
     private indexes: { fields: (keyof T)[]; name?: string }[] = [];
 
 
-    constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration) {
+    constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF) {
         this.db = PouchORM.getDatabase(dbname, opts);
         this.collectionTypeName = this.constructor.name;
+        this.validate = validate;
         if (PouchORM.LOGGING) console.log('initializing collection :', this.collectionTypeName);
     }
 
@@ -96,14 +139,14 @@ export abstract class PouchCollection<T extends IModel> {
      */
     async beforeInit(): Promise<void> {
 
-    };
+    }
 
     /**
      * Can be overriden by sub classes to perform actions after initialization.
      */
     async afterInit(): Promise<void> {
 
-    };
+    }
 
     /**
      * Does the actual work to initialize a collection.
@@ -132,7 +175,7 @@ export abstract class PouchCollection<T extends IModel> {
 
     async addIndex(fields: (keyof T)[], name?: string): Promise<CreateIndexResponse<{}>> {
 
-        //append $collectionType to fields
+        // append $collectionType to fields
         fields.unshift('$collectionType');
         this.indexes.push({fields, name});
 
@@ -148,7 +191,7 @@ export abstract class PouchCollection<T extends IModel> {
         selector?: Partial<T> | { [key: string]: any },
         opts?: { sort?: string[], limit?: number },
     ): Promise<T[]> {
-        const sel = selector || {}
+        const sel = selector || {};
         await this.checkInit();
         sel.$collectionType = this.collectionTypeName;
 
@@ -222,22 +265,44 @@ export abstract class PouchCollection<T extends IModel> {
         return item;
     };
 
-    async upsert(item: T): Promise<T> {
+    async upsert(item: T, deltaFunc?: (existing: T) => T): Promise<T> {
         const existing = await this.findById(item._id);
+        const validate = this.validate !== ClassValidate.OFF
+            ? this.validate
+            : PouchORM.VALIDATE !== ClassValidate.OFF
+                ? PouchORM.VALIDATE
+                : ClassValidate.OFF;
 
         if (existing) {
-            item._rev = existing._rev;
+            if (!deltaFunc) deltaFunc = UpsertHelper(item).replace;
+
+            item = deltaFunc(existing);
+
             if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB updating', item);
         } else {
             if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB create', item);
         }
 
+        if (validate !== ClassValidate.OFF && PouchORM.ClassValidator === undefined) PouchORM.getClassValidator();
+
+        switch (validate) {
+            case ClassValidate.ON:
+                if (PouchORM.LOGGING)
+                    console.log('Valid ' + item.constructor.name + ':', await PouchORM.ClassValidator.validate(item));
+                break;
+            case ClassValidate.ON_AND_LOG:
+                console.log('Valid ' + item.constructor.name + ':', await PouchORM.ClassValidator.validate(item));
+                break;
+            case ClassValidate.ON_AND_REJECT:
+                await PouchORM.ClassValidator.validateOrReject(item);
+                break;
+        }
 
         this.setMetaFields(item);
 
         if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB beforeSave', item);
 
-        await this.db.put(item, {force: true});
+        await this.db.put(item, { force: true });
 
         const doc = await this.findById(item._id);
         if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB afterSave', doc);

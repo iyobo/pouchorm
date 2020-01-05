@@ -16,6 +16,7 @@ you can focus on your data... not the database.
   - Multiple collections in a single Database
   - Multiple collections in multiple Databases
 - Supports web, electron, react-native, and anything else pouchdb supports.
+- Supports optional class validation
 
 ## To install
 `npm i pouchorm`
@@ -23,10 +24,12 @@ you can focus on your data... not the database.
 or if you prefer yarn:
 `yarn add pouchorm`
 
+When using the optional class validation, also install `class-validator` as a dependency of your project using `npm` or `yarn`.
+
 ## How to Use
 
 Consider this definition of a model and it's collection.
-```$xslt
+```typescript
 // Person.ts
 
     import {IModel, PouchCollection, PouchORM} from "pouchorm";
@@ -61,6 +64,20 @@ needs to extend it. Only supports the same field types as pouchDB does.
 `PouchCollection` is a generic abstract class that should be given your model type. 
 This helps it guide you later and give you suggestions of how to work with your model.
 
+In the case that you want the syntactic sugar of classing your models, or you want to use class validation,
+`PouchModel` is a generic class implementation of `IModel` that can be extended.
+```typescript
+export class Person extends PouchModel<Person> {
+    @IsString()
+    name: string
+
+    @IsNumber()
+    age: number
+
+    otherInfo: { [key: string]: any };
+}
+```
+
 If you need to do things before and after initialization, you can override the async hook functions: `beforeInit` 
 or `afterInit`;
 
@@ -68,16 +85,16 @@ Now that we have defined our **Model** and a **Collection** for that model, Here
 You should probably define and export collection instances somewhere in your codebase that you can easily import 
 anywhere in your app.
        
-```$xslt
+```typescript
 
     // instantiate a collection by giving it the dbname it should use
-    export const personCollection: PersonCollection = new Person('db1');
+    export const personCollection: PersonCollection = new PersonCollection('db1');
 
     // Another collection. Notice how it shares the same dbname we passed into the previous collection instance.
     export const someOtherCollection: SomeOtherCollection = new SomeOtherCollection('db1'); 
     
     // In case we needed the same model but for a different database
-    export const personCollection: PersonCollection = new Person('db2');
+    export const personCollection: PersonCollection = new PersonCollection('db2');
 
 ```
 
@@ -87,7 +104,7 @@ From this point:
  
 We are ready to start CRUDing!
 
-```$xslt
+```typescript
     import {personCollection} from '...'
 
     // Using collections
@@ -117,8 +134,12 @@ We are ready to start CRUDing!
 ```
 
 ## PouchCollection instance API reference
-Considering that `T` is the provided type definition of your model:
+Consider that `T` is the provided type or class definition of your model.
 
+### Constructor
+`new Collection(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF)`
+
+### Methods
 - `find(criteria: Partial<T>): Promise<T[]>`
 - `findOrFail(criteria: Partial<T>): Promise<T[]>`
 - `findOne(criteria: Partial<T>): Promise<T>`
@@ -129,10 +150,26 @@ Considering that `T` is the provided type definition of your model:
 - `removeById(id: string): Promise<void>`
 - `remove(item: T): Promise<void>`
 
-- `upsert(item: T): Promise<T>`
+- `upsert(item: T, deltaFunc?: (existing: T) => T): Promise<T>`
 
 - `bulkUpsert(items: T[]): Promise<(Response|Error)[]>`
 - `bulkRemove(items: T[]): Promise<(Response|Error)[]>`
+
+## Class Validation
+Class validation brings the power of strong typing and data validation to PouchDB.
+
+The validation uses the `class-validator` library, and should work anywhere that PouchDB works. This can
+be turned on at the global PouchORM level using `PouchORM.VALIDATE` or at the collection level when creating
+a new instance of PouchCollection.
+
+By default, `upsert` calls `PouchORM.getClassValidator()` when validation is turned on. This dynamically
+imports to `PouchORM.ClassValidator` with the full instance of the required library. The method can also be
+called at any time so that class validation methods, decorators, and so on may used your application without
+the need to statically import the library. **However**, if `class-validator` has not been installed to
+`node_modules`, this **will** crash PouchORM when `PouchORM.getClassValidator()` is called and/or you attempt
+to use `PouchORM.ClassValidator`.
+
+For complete details and advanced usage of `class-validator`, see their [documentation](https://github.com/typestack/class-validator).
 
 ## PouchORM metadata
 
@@ -176,3 +213,4 @@ NOTE: Tests required for new PR acceptance. Those are easy to make as well.
 # Contributors
 
 - Iyobo Eki
+- Aaron Huggins

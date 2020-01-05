@@ -1,8 +1,8 @@
 // Person.ts
 
-import {PouchCollection, PouchORM} from '../index';
-
-import {Fight, FightCollection, Person, PersonCollection} from './util/TestClasses';
+import {PouchCollection, PouchORM, ClassValidate, UpsertHelper} from '../index';
+import {Fight, FightCollection, Person, PersonCollection, AccountCollection, Account} from './util/TestClasses';
+import { ValidationError } from 'class-validator';
 
 
 function makePerson(): Person {
@@ -22,8 +22,9 @@ function makeFight(personAId: string, personBId?: string): Fight {
 describe('PouchCollection Instance', () => {
 
 
-    let personCollection: PersonCollection = new PersonCollection('unit_test');
-    let fightCollection: FightCollection = new FightCollection('unit_test');
+    const personCollection: PersonCollection = new PersonCollection('unit_test');
+    const fightCollection: FightCollection = new FightCollection('unit_test');
+    const accountCollection: AccountCollection = new AccountCollection('unit_test');
 
     beforeEach(async () => {
         await PouchORM.clearDatabase('unit_test');
@@ -54,6 +55,16 @@ describe('PouchCollection Instance', () => {
             person.age = 501;
             const updatedPerson = await personCollection.upsert(person);
             expect(updatedPerson.age).toBe(501);
+        });
+        it('updates documents with delta function', async () => {
+
+            const p = makePerson();
+            const person = await personCollection.upsert(p);
+            expect(person.age).toBe(p.age);
+
+            person.age = 70;
+            const updatedPerson = await personCollection.upsert(person, UpsertHelper(person).merge);
+            expect(updatedPerson.age).toBe(70);
         });
     });
     describe('bulkUpsert', () => {
@@ -114,6 +125,8 @@ describe('PouchCollection Instance', () => {
     describe('with data', () => {
 
         let bulkPersons;
+        let bulkAccounts;
+
         beforeEach(async () => {
 
             bulkPersons = await personCollection.bulkUpsert([
@@ -132,33 +145,62 @@ describe('PouchCollection Instance', () => {
                 {
                     name: 'sephiroth',
                     age: 999
-                },
+                }
             ]);
             expect(bulkPersons).toHaveLength(4);
+
+            bulkAccounts = await accountCollection.bulkUpsert([
+                new Account({
+                    name: 'Darmok',
+                    age: 202
+                }),
+                new Account({
+                    name: 'Jalad',
+                    age: 102
+                }),
+                new Account({
+                    name: 'Tanagra',
+                    age: 102
+                })
+            ]);
+            expect(bulkAccounts).toHaveLength(3);
 
         });
 
         describe('finding with', () => {
             describe('find', () => {
-                it('gets all items matching indexed fields', async () => {
+                it('gets all interface-based items matching indexed fields', async () => {
 
                     const guys = await personCollection.find({age: 28});
                     expect(guys).toHaveLength(2);
                 });
-                it('gets all items matching non-indexed fields', async () => {
+                it('gets all interface-based items matching non-indexed fields', async () => {
 
                     const guys = await personCollection.find({name: 'Kingsley'});
                     expect(guys).toHaveLength(1);
                 });
+                it('gets all class-based items matching indexed fields', async () => {
+
+                    const accounts = await accountCollection.find({age: 102});
+                    expect(accounts).toHaveLength(2);
+                });
             });
 
             describe('findById', () => {
-                it('gets item by id', async () => {
+                it('gets interface-based item by id', async () => {
 
                     const tifa = await personCollection.findById(bulkPersons[0].id);
                     expect(tifa).toBeTruthy();
                     expect(tifa._id).toBe(bulkPersons[0].id);
                     expect(tifa.name).toBe('tifa');
+                });
+
+                it('gets class-based item by id', async () => {
+
+                    const jalad = await accountCollection.findById(bulkAccounts[1].id);
+                    expect(jalad).toBeTruthy();
+                    expect(jalad._id).toBe(bulkAccounts[1].id);
+                    expect(jalad.name).toBe('Jalad');
                 });
 
                 it('returns null if item does not exist', async () => {
@@ -178,7 +220,7 @@ describe('PouchCollection Instance', () => {
                 const cloud = await personCollection.findById(p1[1]._id);
                 expect(cloud).toBeTruthy();
 
-                await personCollection.removeById(cloud._id)
+                await personCollection.removeById(cloud._id);
 
                 const p2 = await personCollection.find({});
                 expect(p2).toHaveLength(3);
@@ -187,7 +229,7 @@ describe('PouchCollection Instance', () => {
                 expect(cloud2).toBeFalsy();
 
             });
-        })
+        });
         describe('bulkRemove', () => {
 
             it('removes all documents in array from database', async () => {
@@ -198,7 +240,36 @@ describe('PouchCollection Instance', () => {
                 expect(newguys).toHaveLength(0);
             });
 
-        })
+        });
+        describe('upsert with', () => {
+
+            it('new instance of class Model', async () => {
+                const a = new Account({
+                    name: 'Spyder',
+                    age: 32
+                });
+                const account = await accountCollection.upsert(a);
+                expect(account.age).toBe(a.age);
+            });
+            it('validation of class Model properties', async () => {
+                const a = new Account({
+                    name: 'Spyder',
+                    age: '32' as any
+                });
+                let error: ValidationError[];
+
+                PouchORM.VALIDATE = ClassValidate.ON_AND_REJECT;
+
+                try {
+                    await accountCollection.upsert(a);
+                } catch (err) {
+                    error = err;
+                }
+
+                expect(error[0]).toBeInstanceOf(ValidationError);
+            });
+
+        });
     });
 
 });
