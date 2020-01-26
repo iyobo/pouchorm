@@ -76,6 +76,9 @@ export class Person extends PouchModel<Person> {
 
     otherInfo: { [key: string]: any };
 }
+
+export class PersonCollection extends PouchCollection<Person> {
+...
 ```
 
 If you need to do things before and after initialization, you can override the async hook functions: `beforeInit` 
@@ -94,7 +97,7 @@ anywhere in your app.
     export const someOtherCollection: SomeOtherCollection = new SomeOtherCollection('db1'); 
     
     // In case we needed the same model but for a different database
-    export const personCollection: PersonCollection = new PersonCollection('db2');
+    export const personCollection2: PersonCollection = new PersonCollection('db2');
 
 ```
 
