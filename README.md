@@ -208,6 +208,16 @@ It is generally better to rely on the exposed functions in your collection insta
 If you want more pouchdb feature support, feel free to open an issue. This library is also very simple 
 to grok, so feel free to send in a PR! 
 
+## Deleting the Database
+
+```
+import {PouchORM} from 'pouchorm'
+...
+PouchORM.deleteDatabase(dbName: string)
+```
+It goes without saying that this cannot be undone, so be careful with this!
+Also, any loaded `PouchCollection` instances you still have will now throw the error "database is destroyed" if you try to run any DB access operations on them.
+
 
 ## Supporting the Project
 If you use PouchORM and it's helping you do awesome stuff, be a sport and  <a href="https://www.buymeacoffee.com/iyobo" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> or <a href="https://www.patreon.com/bePatron?u=19661939" data-patreon-widget-type="become-patron-button">Become a Patron!</a>. PRs are also welcome.
