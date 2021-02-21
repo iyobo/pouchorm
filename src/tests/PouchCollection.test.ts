@@ -1,23 +1,16 @@
 // Person.ts
 
-import {PouchCollection, UpsertHelper} from '../index';
-import {Fight, FightCollection, Person, PersonCollection, AccountCollection, Account} from './util/TestClasses';
-import { ValidationError } from 'class-validator';
-import {PouchORM} from '../index';
+import {Account, AccountCollection, FightCollection, Person, PersonCollection} from './util/TestClasses';
+import {ValidationError} from 'class-validator';
 import {ClassValidate} from '../types';
+import {UpsertHelper} from '../helpers';
+import {PouchORM} from '../PouchORM';
 
 
 function makePerson(): Person {
     return {
         name: 'Spyder',
         age: 40,
-    };
-}
-
-function makeFight(personAId: string, personBId?: string): Fight {
-    return {
-        personAId,
-        personBId
     };
 }
 

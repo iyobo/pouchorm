@@ -3036,13 +3036,6 @@ pouchdb-collections@7.1.1:
   resolved "https://registry.yarnpkg.com/pouchdb-collections/-/pouchdb-collections-7.1.1.tgz#4f7704896e4055ba354241c0fd75bbb7446a809f"
   integrity sha512-Iwdv74+H8tSc9cM7co0X4eJQglaPp+uIX7qjzK5MIeZThUHNcJQxOC92qGK1qE3Z2feAD5LxhXEIYDia/lB8pw==
 
-pouchdb-erase@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/pouchdb-erase/-/pouchdb-erase-1.0.2.tgz#cbdfdddf2dfcd814d0cad72221514237eeb2c151"
-  integrity sha1-y9/d3y382BTQytciIVFCN+6ywVE=
-  dependencies:
-    promise-nodify "^1.0.1"
-
 pouchdb-errors@7.1.1:
   version "7.1.1"
   resolved "https://registry.yarnpkg.com/pouchdb-errors/-/pouchdb-errors-7.1.1.tgz#799603a46e3dfc9ec9403fe11610236a46354cf6"
@@ -3155,11 +3148,6 @@ process-nextick-args@~2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-2.0.1.tgz#7820d9b16120cc55ca9ae7792680ae7dba6d7fe2"
   integrity sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==
-
-promise-nodify@^1.0.1:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/promise-nodify/-/promise-nodify-1.0.2.tgz#0d0fb143c33400b0061b47e581257557047d4c5a"
-  integrity sha1-DQ+xQ8M0ALAGG0flgSV1VwR9TFo=
 
 prompts@^2.0.1:
   version "2.3.0"

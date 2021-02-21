@@ -18,3 +18,15 @@ export enum ClassValidate {
   ON_AND_LOG,
   ON_AND_REJECT
 }
+
+export abstract class PouchModel<T> implements IModel {
+  constructor(item: T) {
+    Object.assign(this, item);
+  }
+
+  _id?: string;
+  _rev?: string;
+  _deleted?: boolean;
+  $timestamp?: number;
+  $collectionType?: string;
+}
