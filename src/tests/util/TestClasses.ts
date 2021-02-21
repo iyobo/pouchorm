@@ -1,5 +1,6 @@
-import {IModel, PouchCollection, PouchModel} from '../../index';
+import {PouchCollection, PouchModel} from '../../index';
 import {IsNumber, IsString} from 'class-validator';
+import {IModel} from '../../types';
 
 export interface Person extends IModel {
     name: string;

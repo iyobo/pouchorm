@@ -1,80 +1,16 @@
 import PouchDB from 'pouchdb';
 import PouchFind from 'pouchdb-find';
-import * as ClassValidator from 'class-validator';
+import {v4 as uuid} from 'uuid';
+import ClassValidator from 'class-validator';
+import {ClassValidate, CollectionState, IModel} from './types';
 
-PouchDB.plugin(PouchFind);
-
+export const retry = require('async-retry');
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
-const ChanceTool = require('chance');
-const chance = new ChanceTool();
-const retry = require('async-retry');
+// PouchDB plugins needed for everyday essentials
+PouchDB.plugin(PouchFind);
+PouchDB.plugin(require('pouchdb-erase'));
 
-
-export interface IModel {
-    _id?: string;
-    _rev?: string;
-    _deleted?: boolean;
-    $timestamp?: number;
-    $collectionType?: string; // Holds what type of object this is
-}
-
-export enum CollectionState {
-    NEW,
-    LOADING,
-    READY,
-}
-
-export enum ClassValidate {
-    OFF,
-    ON,
-    ON_AND_LOG,
-    ON_AND_REJECT
-}
-
-export class PouchORM {
-    static databases: { [key: string]: PouchDB.Database } = {};
-    static LOGGING = false;
-    static VALIDATE = ClassValidate.OFF;
-    static ClassValidator: typeof ClassValidator;
-    static PouchDB = PouchDB;
-
-    static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
-        if (!PouchORM.databases[dbName]) {
-            if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
-            PouchORM.databases[dbName] = new PouchDB(dbName, opts);
-        }
-
-        // ensure opts match up with database being returned
-        if (opts) {
-
-        }
-
-        return PouchORM.databases[dbName];
-    }
-
-    static async clearDatabase(dbName: string) {
-
-        const db = PouchORM.getDatabase(dbName);
-
-        const result = await db.allDocs();
-        return Promise.all(result.rows.map(function (row) {
-            return db.remove(row.id, row.value.rev);
-        }));
-    }
-
-    static getClassValidator() {
-        let classValidator: typeof ClassValidator;
-
-        try {
-            classValidator = require('class-validator');
-        } catch (error) {
-            console.log('Error initializing validator: ', error);
-        }
-
-        return PouchORM.ClassValidator = classValidator;
-    }
-}
 
 export function UpsertHelper(item: any) {
     return {
@@ -251,7 +187,7 @@ export abstract class PouchCollection<T extends IModel> {
 
     private setMetaFields = (item: T) => {
         if (!item._id) {
-            item._id = chance.guid();
+            item._id = uuid();
         }
 
         item.$timestamp = Date.now();
@@ -321,4 +257,52 @@ export abstract class PouchCollection<T extends IModel> {
         return result;
     }
 
+}
+
+
+export class PouchORM {
+    static databases: { [key: string]: PouchDB.Database } = {};
+    static LOGGING = false;
+    static VALIDATE = ClassValidate.OFF;
+    static ClassValidator: typeof ClassValidator;
+    static PouchDB = PouchDB;
+
+    static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
+        if (!PouchORM.databases[dbName]) {
+            if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
+            PouchORM.databases[dbName] = new PouchDB(dbName, opts);
+        }
+
+        // ensure opts match up with database being returned
+        if (opts) {
+
+        }
+
+        return PouchORM.databases[dbName];
+    }
+
+
+    static async clearDatabase(dbName: string) {
+
+        const db = PouchORM.getDatabase(dbName);
+        return db.erase();
+    }
+
+    static async deleteDatabase(dbName: string) {
+
+        const db = PouchORM.getDatabase(dbName);
+        return db.destroy();
+    }
+
+    static getClassValidator() {
+        let classValidator: typeof ClassValidator;
+
+        try {
+            classValidator = require('class-validator');
+        } catch (error) {
+            console.log('Error initializing validator: ', error);
+        }
+
+        return PouchORM.ClassValidator = classValidator;
+    }
 }

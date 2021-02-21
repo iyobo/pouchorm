@@ -1,8 +1,10 @@
 // Person.ts
 
-import {PouchCollection, PouchORM, ClassValidate, UpsertHelper} from '../index';
+import {PouchCollection, UpsertHelper} from '../index';
 import {Fight, FightCollection, Person, PersonCollection, AccountCollection, Account} from './util/TestClasses';
 import { ValidationError } from 'class-validator';
+import {PouchORM} from '../index';
+import {ClassValidate} from '../types';
 
 
 function makePerson(): Person {
