@@ -1,24 +1,17 @@
 // Person.ts
 
-import {Account, AccountCollection, FightCollection, Person, PersonCollection} from './util/TestClasses';
+import {Account, AccountCollection, Person, PersonCollection} from './util/TestClasses';
 import {ValidationError} from 'class-validator';
 import {ClassValidate} from '../types';
 import {UpsertHelper} from '../helpers';
 import {PouchORM} from '../PouchORM';
+import {makePerson} from './util/testHelpers';
 
-
-function makePerson(): Person {
-    return {
-        name: 'Spyder',
-        age: 40,
-    };
-}
 
 describe('PouchCollection Instance', () => {
 
 
     const personCollection: PersonCollection = new PersonCollection('unit_test');
-    const fightCollection: FightCollection = new FightCollection('unit_test');
     const accountCollection: AccountCollection = new AccountCollection('unit_test');
 
     beforeEach(async () => {
@@ -61,6 +54,25 @@ describe('PouchCollection Instance', () => {
             const updatedPerson = await personCollection.upsert(person, UpsertHelper(person).merge);
             expect(updatedPerson.age).toBe(70);
         });
+        it('uses custom idGenerator if defined when creating documents ', async () => {
+
+            const p = makePerson();
+            expect(p._id).toBeUndefined();
+
+            const randomId = `p${Date.now()}`;
+            personCollection.idGenerator = () => {
+                return randomId;
+            };
+            const person: Person = await personCollection.upsert(p) as Person;
+
+
+            expect(person).toBeTruthy();
+            expect(person._id).toBe(randomId);
+
+            // clean up
+            personCollection.idGenerator = null;
+        });
+
     });
     describe('bulkUpsert', () => {
         it('creates documents in array', async () => {

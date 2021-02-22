@@ -1,11 +1,11 @@
 import {ClassValidate, CollectionState, IModel} from './types';
 import {getPouchDBWithPlugins, UpsertHelper} from './helpers';
-import { v4 as uuid } from 'uuid';
+import {v4 as uuid} from 'uuid';
+import {PouchORM} from './PouchORM';
 
 const PouchDB = getPouchDBWithPlugins();
 const retry = require('async-retry');
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
-import {PouchORM} from './PouchORM';
 
 export abstract class PouchCollection<T extends IModel> {
 
@@ -15,6 +15,9 @@ export abstract class PouchCollection<T extends IModel> {
   validate: ClassValidate;
 
   private indexes: { fields: (keyof T)[]; name?: string }[] = [];
+
+  // Define this static function to generate your own ids.
+  idGenerator: () => string | Promise<string>;
 
 
   constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF) {
@@ -160,9 +163,9 @@ export abstract class PouchCollection<T extends IModel> {
     if (item) await this.db.remove(item._id, item._rev);
   }
 
-  private setMetaFields = (item: T) => {
+  private setMetaFields = async (item: T) => {
     if (!item._id) {
-      item._id = uuid();
+      item._id = (await this.idGenerator?.()) || uuid();
     }
 
     item.$timestamp = Date.now();
@@ -170,6 +173,7 @@ export abstract class PouchCollection<T extends IModel> {
 
     return item;
   };
+
   private markDeleted = (item: T) => {
     item._deleted = true;
 
@@ -209,7 +213,7 @@ export abstract class PouchCollection<T extends IModel> {
         break;
     }
 
-    this.setMetaFields(item);
+    await this.setMetaFields(item);
 
     if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB beforeSave', item);
 
@@ -221,8 +225,8 @@ export abstract class PouchCollection<T extends IModel> {
   }
 
   async bulkUpsert(items: T[]): Promise<Array<PouchDB.Core.Response | PouchDB.Core.Error>> {
-
-    const result = await this.db.bulkDocs(items.map(this.setMetaFields));
+    const itemsWithMeta = await Promise.all(items.map(this.setMetaFields));
+    const result = await this.db.bulkDocs(itemsWithMeta);
     return result;
   }
 

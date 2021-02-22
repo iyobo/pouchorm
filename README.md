@@ -179,25 +179,55 @@ For complete details and advanced usage of `class-validator`, see their [documen
 PouchORM adds some metadata fields to each documents to make certain features possible.
 Key of which are `$timestamp` and `$collectionType`.
 
-### $timestamp 
-This gets updated with a unix timestamp upon upserting a document.
-This is also auto-indexed for time-sensitive ordering 
+### $timestamp
+
+This gets updated with a unix timestamp upon upserting a document. This is also auto-indexed for time-sensitive ordering
 (i.e so items don't show up in random locations in results each time, which can be disconcerting)
 
-### $collectionType 
-There is no concept of tables or collections in PouchDB. Only databases.
-This field helps us differentiate what collection each document belongs to.
-This is also auto-indexed for your convenience.
+### $collectionType
+
+There is no concept of tables or collections in PouchDB. Only databases. This field helps us differentiate what
+collection each document belongs to. This is also auto-indexed for your convenience.
+
+## Custom IDs per collection
+
+You can control the way IDs are generated for new items. Just define the `idGenerator` function property in a
+collection object. This can be a normal or async function that returns a string.
+
+```typescript
+import {personCollection} from '...'
+...
+personCollection.idGenerator = () => {
+  return randomIdString;
+};
+
+// of
+
+personCollection.idGenerator = async () => {
+  const anotherString = await someAsyncIDStringBuilder()
+  return anotherString;
+};
+
+// or better yet, for consistency
+
+export class PersonCollection extends PouchCollection<IPerson> {
+
+  async idGenerator(){
+    //...
+  }
+}
+```
 
 ## Installing PouchDB plugins
 
-You can access the base PouchDB module used by PouchORM with `PouchORM.PouchDB`.
-You can install plugins you need with that e.g `PouchORM.PouchDB.plugin(...)`.
-PouchORM already comes with the plugin `pouchdb-find` which is essential for any useful querying of the database.
+You can access the base PouchDB module used by PouchORM with `PouchORM.PouchDB`. You can install plugins you need with
+that e.g `PouchORM.PouchDB.plugin(...)`. PouchORM already comes with the plugin `pouchdb-find` which is essential for
+any useful querying of the database.
 
 ## Accessing the raw pouchdb database
-Every instance has a reference to the internally instantiated db `collectionInstance.db` that you can use 
-to reference other methods of the raw pouch db instance e.g `personCollection.db.putAttachment(...)`.
+
+Every instance has a reference to the internally instantiated db `collectionInstance.db` that you can use to reference
+other methods of the raw pouch db instance e.g `personCollection.db.putAttachment(...)`.
 
 You can use this for anything that does not directly involve accessing documents e.g adding an attachment is fine.
 But caution must be followed when you want to use this to manipulate a document directly, as pouch orm marks documents with 
