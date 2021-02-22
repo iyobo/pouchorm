@@ -189,7 +189,7 @@ This gets updated with a unix timestamp upon upserting a document. This is also 
 There is no concept of tables or collections in PouchDB. Only databases. This field helps us differentiate what
 collection each document belongs to. This is also auto-indexed for your convenience.
 
-## Custom IDs per collection
+## Custom ID generation
 
 You can control the way IDs are generated for new items. Just define the `idGenerator` function property in a
 collection object. This can be a normal or async function that returns a string.
@@ -198,8 +198,11 @@ collection object. This can be a normal or async function that returns a string.
 import {personCollection} from '...'
 ...
 personCollection.idGenerator = () => {
-  return randomIdString;
+  return 'randomIdString';
 };
+
+const p = awair personCollection.upsert({...})
+p._id === 'randomIdString' // true
 
 // of
 
@@ -208,6 +211,7 @@ personCollection.idGenerator = async () => {
   return anotherString;
 };
 
+...
 // or better yet, for consistency
 
 export class PersonCollection extends PouchCollection<IPerson> {
@@ -216,6 +220,8 @@ export class PersonCollection extends PouchCollection<IPerson> {
     //...
   }
 }
+
+...
 ```
 
 ## Installing PouchDB plugins
