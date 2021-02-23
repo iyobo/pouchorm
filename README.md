@@ -209,7 +209,7 @@ p._id === 'randomIdString' // true
 
 You can also do:
 
-```
+```typescript
 personCollection.idGenerator = async () => {
   const anotherString = await someAsyncIDStringBuilder()
   return anotherString;
