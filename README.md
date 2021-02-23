@@ -196,32 +196,35 @@ collection object. This can be a normal or async function that returns a string.
 
 ```typescript
 import {personCollection} from '...'
-...
+
+
 personCollection.idGenerator = () => {
   return 'randomIdString';
 };
 
-const p = awair personCollection.upsert({...})
+const p = await personCollection.upsert({...})
 p._id === 'randomIdString' // true
 
-// of
+```
 
+You can also do:
+
+```
 personCollection.idGenerator = async () => {
   const anotherString = await someAsyncIDStringBuilder()
   return anotherString;
 };
 
-...
-// or better yet, for consistency
+// or better yet, cleanly override the property in the class for consistency
 
 export class PersonCollection extends PouchCollection<IPerson> {
 
+  // override
   async idGenerator(){
-    //...
+    return 'randomIdString';
   }
 }
 
-...
 ```
 
 ## Installing PouchDB plugins
