@@ -1,6 +1,6 @@
 {
   "name": "pouchorm",
-  "version": "1.0.8",
+  "version": "1.3.0",
   "description": "PouchDB ORM for Typescript. Work with Multiple databases or multiple collections in a single database. Supports all platforms PouchDB supports.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -21,7 +21,7 @@
     "test": "jest --config jestconfig.json",
     "test:watch": "jest --config jestconfig.json --watch",
     "build": "tsc",
-    "prepublish": "tsc && npm test",
+    "prepublish": "tsc && npm run lint && npm test",
     "dev": "tsc -w",
     "lint": "tslint -c tslint.json -p tsconfig.json"
   },
@@ -31,22 +31,25 @@
   "author": "Iyobo Eki",
   "license": "MIT",
   "dependencies": {
-    "async-retry": "^1.2.3",
-    "chance": "^1.1.4",
+    "async-retry": "^1.3.1",
     "pouchdb": "^7.1.1",
     "pouchdb-find": "^7.1.1",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "uuid": "^8.3.2"
   },
   "peerDependencies": {},
   "devDependencies": {
-    "@types/jest": "^24.0.15",
-    "@types/lodash": "^4.14.136",
-    "@types/node": "^12.12.17",
+    "@types/jest": "^24.0.25",
+    "@types/lodash": "^4.14.149",
+    "@types/node": "^12.12.24",
     "@types/pouchdb": "^6.4.0",
     "jest": "^24.8.0",
     "supertest": "^4.0.2",
-    "ts-jest": "^24.0.2",
-    "tslint": "^5.18.0",
-    "typescript": "^3.5.3"
+    "ts-jest": "^24.2.0",
+    "tslint": "^5.20.1",
+    "typescript": "^3.7.4"
+  },
+  "optionalDependencies": {
+    "class-validator": "^0.11.0"
   }
 }

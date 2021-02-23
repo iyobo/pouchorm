@@ -1,5 +1,6 @@
-import {IModel, PouchCollection} from '../../index';
-
+import {IsNumber, IsString} from 'class-validator';
+import {IModel, PouchModel} from '../../types';
+import {PouchCollection} from '../../PouchCollection';
 
 export interface Person extends IModel {
     name: string;
@@ -29,5 +30,17 @@ export interface Fight extends IModel {
 }
 
 export class FightCollection extends PouchCollection<Fight> {
+
+}
+
+export class Account extends PouchModel<Account> {
+    @IsString()
+    name: string;
+
+    @IsNumber()
+    age: number;
+}
+
+export class AccountCollection extends PouchCollection<Account> {
 
 }
