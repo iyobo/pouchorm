@@ -1,9 +1,9 @@
 import {ClassValidate, CollectionState, IModel} from './types';
-import {getPouchDBWithPlugins, UpsertHelper} from './helpers';
+import {UpsertHelper} from './helpers';
 import {v4 as uuid} from 'uuid';
 import {PouchORM} from './PouchORM';
 
-const PouchDB = getPouchDBWithPlugins();
+
 const retry = require('async-retry');
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
@@ -74,8 +74,6 @@ export abstract class PouchCollection<T extends IModel> {
     //     // if anything throws, we retry
     //     console.log(`Initializing ${this.constructor.name}...`);
     //
-    //
-    //
     // }, {
     //     retries: 3
     // });
@@ -116,6 +114,19 @@ export abstract class PouchCollection<T extends IModel> {
     });
 
     return docs as T[];
+  }
+
+  /**
+   * This is called when an item of this collection type is changed over the network.
+   * It is run in parallel with any other network changes.
+   * @param selector
+   * @param opts
+   */
+  async onSyncChange(
+    change?: PouchDB.Core.ChangesResponseChange<IModel>
+  ): Promise<void> {
+    // override and use
+    console.info(this.collectionTypeName, 'change received from network', change);
   }
 
   async findOne(selector: Partial<T> | { [key: string]: any }): Promise<T> {

@@ -1,6 +1,8 @@
-import {ClassValidate} from './types';
+import {ClassValidate, IModel} from './types';
 import ClassValidator from 'class-validator';
 import {getPouchDBWithPlugins} from './helpers';
+import {PouchCollection} from './PouchCollection';
+
 const PouchDB = getPouchDBWithPlugins();
 
 export class PouchORM {
@@ -9,11 +11,25 @@ export class PouchORM {
   static VALIDATE = ClassValidate.OFF;
   static ClassValidator: typeof ClassValidator;
   static PouchDB = PouchDB;
+  static registeredCollections = new Set<PouchCollection<IModel>>();
 
   static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
     if (!PouchORM.databases[dbName]) {
       if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
       PouchORM.databases[dbName] = new PouchDB(dbName, opts);
+
+
+      PouchORM.databases[dbName].changes({
+        since: 'now'
+      }).on('change', function (change: PouchDB.Core.ChangesResponseChange<IModel>) {
+        console.log('change', change);
+        PouchORM.registeredCollections.forEach((it) => {
+          if (change.doc.$collectionType === it.collectionTypeName) it.onSyncChange(change);
+        });
+      }).on('error', function (err) {
+        console.error('Sync Error', this.constructor.name, err);
+      });
+
     }
 
     return PouchORM.databases[dbName];
@@ -34,6 +50,10 @@ export class PouchORM {
 
     const db = PouchORM.getDatabase(dbName);
     return await db.destroy();
+  }
+
+  static async registerCollection(collection: PouchCollection<IModel>) {
+    this.registeredCollections.add(collection);
   }
 
   static getClassValidator() {
