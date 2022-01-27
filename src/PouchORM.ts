@@ -5,6 +5,14 @@ import {PouchCollection} from './PouchCollection';
 
 const PouchDB = getPouchDBWithPlugins();
 
+export type ORMSyncOptions = {
+  opts?: PouchDB.Configuration.DatabaseConfiguration,
+  onChange?: (change: PouchDB.Replication.SyncResult<IModel>) => unknown
+  onPaused?: (info: PouchDB.Replication.SyncResult<IModel>) => unknown
+  onActive?: (info: PouchDB.Replication.SyncResult<IModel>) => unknown
+  onError?: (error: unknown) => unknown
+};
+
 export class PouchORM {
   static databases: { [key: string]: PouchDB.Database } = {};
   static LOGGING = false;
@@ -13,26 +21,43 @@ export class PouchORM {
   static PouchDB = PouchDB;
   static registeredCollections = new Set<PouchCollection<IModel>>();
 
-  static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): any {
+  static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
     if (!PouchORM.databases[dbName]) {
       if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
       PouchORM.databases[dbName] = new PouchDB(dbName, opts);
 
-
-      PouchORM.databases[dbName].changes({
-        since: 'now'
-      }).on('change', function (change: PouchDB.Core.ChangesResponseChange<IModel>) {
-        console.log('change', change);
-        PouchORM.registeredCollections.forEach((it) => {
-          if (change.doc.$collectionType === it.collectionTypeName) it.onSyncChange(change);
-        });
-      }).on('error', function (err) {
-        console.error('Sync Error', this.constructor.name, err);
-      });
-
     }
 
     return PouchORM.databases[dbName];
+  }
+
+  static startSync(dbName, remoteURL: string, options: ORMSyncOptions = {}) {
+    const localDb = PouchORM.getDatabase(dbName);
+    const remoteDB = new PouchDB(remoteURL);
+
+    const realOps = {
+      live: true,
+      retry: true,
+      ...options.opts || {}
+    };
+
+    localDb.sync(remoteDB, realOps).on('change', function (change: PouchDB.Replication.SyncResult<IModel>) {
+      // yo, something changed!
+      console.log('change', change);
+      PouchORM.registeredCollections.forEach((it) => {
+        if (change.change.docs[0]..$collectionType === it.collectionTypeName) it.onSyncChange(change);
+      });
+      options.onChange?.(change);
+    }).on('paused', function (info) {
+      // replication was paused, usually because of a lost connection
+      options.onPaused?.(info);
+    }).on('active', function (info) {
+      // replication was resumed
+      options.onActive?.(info);
+    }).on('error', function (err) {
+      // totally unhandled error (shouldn't happen)
+      options.onPaused?.(err);
+    });
   }
 
 
