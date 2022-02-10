@@ -1,6 +1,11 @@
 import {IsNumber, IsString} from 'class-validator';
 import {IModel, PouchModel} from '../../types';
 import {PouchCollection} from '../../PouchCollection';
+import {PouchORM} from '../../PouchORM';
+
+// NOTE: Cannot test PouchORM.sync with memory adapter. Not supported.
+// PouchORM.PouchDB.plugin(require('pouchdb-adapter-memory'));
+// PouchORM.adapter = 'memory';
 
 export interface Person extends IModel {
   name: string;

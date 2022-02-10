@@ -1,7 +1,6 @@
 import {ClassValidate, IModel, Sync} from './types';
 import ClassValidator from 'class-validator';
 import {getPouchDBWithPlugins} from './helpers';
-import {PouchCollection} from './PouchCollection';
 
 const PouchDB = getPouchDBWithPlugins();
 
@@ -20,11 +19,12 @@ export class PouchORM {
   static ClassValidator: typeof ClassValidator;
   static PouchDB = PouchDB;
 
+  static adapter;
+
   static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
     if (!PouchORM.databases[dbName]) {
       if (PouchORM.LOGGING) console.log('Creating DB: ', dbName);
-      PouchORM.databases[dbName] = new PouchDB(dbName, opts);
-
+      PouchORM.databases[dbName] = new PouchDB(dbName, {adapter: PouchORM.adapter, ...opts});
     }
 
     return PouchORM.databases[dbName];

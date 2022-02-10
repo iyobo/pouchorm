@@ -44,6 +44,7 @@
     "@types/node": "^12.12.24",
     "@types/pouchdb": "^6.4.0",
     "jest": "^24.8.0",
+    "pouchdb-adapter-memory": "^7.2.2",
     "supertest": "^4.0.2",
     "ts-jest": "^24.2.0",
     "tslint": "^5.20.1",

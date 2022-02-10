@@ -33,8 +33,13 @@ describe('PouchORM', () => {
       const changeLog = [];
       PouchORM.startSync(db1, db2, {
         onChange: (change) => {
-          // console.log('changeDoc', change.change.docs);
-          changeLog.push(change);
+          console.log('changeDoc', change.change.docs);
+
+          // only log collection changes
+          change.change.docs?.forEach(it => {
+            if (it.$collectionType) changeLog.push(change);
+          });
+
         }
       });
 
@@ -43,10 +48,10 @@ describe('PouchORM', () => {
 
       expect(changeLog.length).toBe(0);
 
-      await a.upsert({
+      await b.upsert({
         name: 'Second Spyder',
         age: 40,
-        lastChangedBy: 'iyobo'
+        lastChangedBy: 'userB'
       });
 
       // wait 1 seconds
