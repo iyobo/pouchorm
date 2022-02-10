@@ -7,7 +7,7 @@ export interface IModel {
   /**
    * Will automatically be filled with PouchORM.userId on upserts
    */
-  $updatedBy?: string;
+  $by?: string;
 }
 
 export enum CollectionState {
@@ -36,7 +36,7 @@ export abstract class PouchModel<T> implements IModel {
   /**
    * Will automatically be filled with PouchORM.userId on upserts
    */
-  $updatedBy?: string;
+  $by?: string;
 }
 
 export type SyncResult<IModel> = PouchDB.Replication.SyncResult<IModel>;

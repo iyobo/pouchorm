@@ -198,7 +198,7 @@ This gets updated with a unix timestamp upon upserting a document. This is also 
 There is no concept of tables or collections in PouchDB. Only databases. This field helps us differentiate what
 collection each document belongs to. This is also auto-indexed for your convenience.
 
-### $updatedBy (v1.6.x)
+### $by (v1.6.x)
 
 PouchORM can help you append a userId to each originating change to specify who changed a document last.
 Simply use `PouchORM.setUserId(...)` to specify who the local/active user is, and PouchORM will put that id here.
