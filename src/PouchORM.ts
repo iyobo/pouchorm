@@ -19,6 +19,11 @@ export class PouchORM {
   static ClassValidator: typeof ClassValidator;
   static PouchDB = PouchDB;
 
+  /**
+   * Set this to enable user change logging with this id for each upsert
+   */
+  static userId;
+
   static adapter;
 
   static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
@@ -28,6 +33,10 @@ export class PouchORM {
     }
 
     return PouchORM.databases[dbName];
+  }
+
+  static setUser(userId: string) {
+    PouchORM.userId = userId;
   }
 
   /**

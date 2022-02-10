@@ -168,6 +168,7 @@ export abstract class PouchCollection<T extends IModel> {
 
     item.$timestamp = Date.now();
     item.$collectionType = this.collectionTypeName;
+    item.$updatedBy = PouchORM.userId || '...';
 
     return item;
   };

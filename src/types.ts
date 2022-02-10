@@ -4,6 +4,10 @@ export interface IModel {
   _deleted?: boolean;
   $timestamp?: number;
   $collectionType?: string; // Holds what type of object this is
+  /**
+   * Will automatically be filled with PouchORM.userId on upserts
+   */
+  $updatedBy?: string;
 }
 
 export enum CollectionState {
@@ -29,6 +33,10 @@ export abstract class PouchModel<T> implements IModel {
   _deleted?: boolean;
   $timestamp?: number;
   $collectionType?: string;
+  /**
+   * Will automatically be filled with PouchORM.userId on upserts
+   */
+  $updatedBy?: string;
 }
 
 export type SyncResult<IModel> = PouchDB.Replication.SyncResult<IModel>;
