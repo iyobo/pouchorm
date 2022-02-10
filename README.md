@@ -28,7 +28,10 @@ or if you prefer yarn:
 When using the optional class validation, also install `class-validator` as a dependency of your project using `npm` or `yarn`.
 
 ## Changelog
-- 
+- v1.5.0
+  - feat: Added ORM support for managing syncing between multiple databases
+- v1.3
+  - feat: Added Delta sync support
 
 ## How to Use
 
@@ -261,6 +264,19 @@ PouchORM.deleteDatabase(dbName: string)
 It goes without saying that this cannot be undone, so be careful with this!
 Also, any loaded `PouchCollection` instances you still have will now throw the error "database is destroyed" if you try to run any DB access operations on them.
 
+## Realtime Sync!
+
+Last but not least, PouchDB is all about sync. 
+You could always access the native Pouch DB object and run sync operations.
+
+But as of v1.5, some sugar has been added to make this a simplified PouchORM experience as well.
+
+Introducing `PouchORM.startSync(fromPath, toPath, opts)` where either paths could 
+be local paths/names or a remote db url path. Within `opts`, you can specify callbacks that trigger upon specific events
+during the realtime sync e.g `onChange`, `onError`,`onStart`, etc. Have a look at the reference.
+
+You can also cancel real-time sync by `PouchORM.stopSync(fromPath, toPath)` or if you want to stop all active sync 
+operations originating from a specific DB, `PouchORM.stopAllSync(fromPath)`.
 
 ## Supporting the Project
 If you use PouchORM and it's helping you do awesome stuff, be a sport and  <a href="https://www.buymeacoffee.com/iyobo" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> or <a href="https://www.patreon.com/bePatron?u=19661939" data-patreon-widget-type="become-patron-button">Become a Patron!</a>. PRs are also welcome.
