@@ -28,6 +28,8 @@ or if you prefer yarn:
 When using the optional class validation, also install `class-validator` as a dependency of your project using `npm` or `yarn`.
 
 ## Changelog
+- v2.0.0
+  - feat: changed meta name `$updatedBy` to simply `$by` to conserve space.
 - v1.6.0
   - feat: Added simplified audit trace, specified by `PouchORM.setUserId(...)`.
 - v1.5.0
