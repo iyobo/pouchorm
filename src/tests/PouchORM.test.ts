@@ -24,4 +24,36 @@ describe('PouchORM', () => {
     });
   });
 
+  describe('onSyncChange', () => {
+    it('syncs between 2 databases', async () => {
+
+      const db1 = 'unit_test_sync_A';
+      const db2 = 'unit_test_sync_B';
+
+      const changeLog = [];
+      PouchORM.startSync(db1, db2, {
+        onChange: (change) => {
+          // console.log('changeDoc', change.change.docs);
+          changeLog.push(change);
+        }
+      });
+
+      const a: PersonCollection = new PersonCollection(db1);
+      const b: PersonCollection = new PersonCollection(db2);
+
+      expect(changeLog.length).toBe(0);
+
+      await a.upsert({
+        name: 'Second Spyder',
+        age: 40,
+        lastChangedBy: 'iyobo'
+      });
+
+      // wait 1 seconds
+      await new Promise((r) => setTimeout(r, 1000));
+      expect(changeLog.length).toBe(1);
+
+    });
+  });
+
 });

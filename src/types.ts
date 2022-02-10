@@ -30,3 +30,6 @@ export abstract class PouchModel<T> implements IModel {
   $timestamp?: number;
   $collectionType?: string;
 }
+
+export type SyncResult<IModel> = PouchDB.Replication.SyncResult<IModel>;
+export type Sync<IModel> = PouchDB.Replication.Sync<IModel>;

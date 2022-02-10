@@ -1,4 +1,4 @@
-import {ClassValidate, IModel} from './types';
+import {ClassValidate, IModel, Sync} from './types';
 import ClassValidator from 'class-validator';
 import {getPouchDBWithPlugins} from './helpers';
 import {PouchCollection} from './PouchCollection';
@@ -8,7 +8,7 @@ const PouchDB = getPouchDBWithPlugins();
 export type ORMSyncOptions = {
   opts?: PouchDB.Configuration.DatabaseConfiguration,
   onChange?: (change: PouchDB.Replication.SyncResult<IModel>) => unknown
-  onPaused?: (info: PouchDB.Replication.SyncResult<IModel>) => unknown
+  onPaused?: (info: unknown) => unknown
   onActive?: (info: PouchDB.Replication.SyncResult<IModel>) => unknown
   onError?: (error: unknown) => unknown
 };
@@ -19,7 +19,6 @@ export class PouchORM {
   static VALIDATE = ClassValidate.OFF;
   static ClassValidator: typeof ClassValidator;
   static PouchDB = PouchDB;
-  static registeredCollections = new Set<PouchCollection<IModel>>();
 
   static getDatabase(dbName: string, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
     if (!PouchORM.databases[dbName]) {
@@ -31,9 +30,24 @@ export class PouchORM {
     return PouchORM.databases[dbName];
   }
 
-  static startSync(dbName, remoteURL: string, options: ORMSyncOptions = {}) {
-    const localDb = PouchORM.getDatabase(dbName);
-    const remoteDB = new PouchDB(remoteURL);
+  /**
+   * A map of active sync operations
+   */
+  public static activeSyncOperations: Record<string, Record<string, Sync<IModel>>> = {};
+
+  /**
+   * start Synchronizing between 2 files.
+   */
+  static startSync(fromDB: string, toDB: string, options: ORMSyncOptions = {}) {
+
+    PouchORM.activeSyncOperations[fromDB] = PouchORM.activeSyncOperations[fromDB] || {};
+    if (PouchORM.activeSyncOperations[fromDB][toDB]) {
+      // stop any previous syncs of same names/paths
+      PouchORM.activeSyncOperations[fromDB][toDB].cancel();
+    }
+
+    const localDb = PouchORM.getDatabase(fromDB);
+    const remoteDB = new PouchDB(toDB);
 
     const realOps = {
       live: true,
@@ -41,25 +55,46 @@ export class PouchORM {
       ...options.opts || {}
     };
 
-    localDb.sync(remoteDB, realOps).on('change', function (change: PouchDB.Replication.SyncResult<IModel>) {
-      // yo, something changed!
-      console.log('change', change);
-      PouchORM.registeredCollections.forEach((it) => {
-        if (change.change.docs[0]..$collectionType === it.collectionTypeName) it.onSyncChange(change);
+    // create new sync operation
+    const syncOperation = localDb.sync(remoteDB, realOps)
+      .on('change', function (change: PouchDB.Replication.SyncResult<IModel>) {
+        // yo, something changed!
+        if (PouchORM.LOGGING) console.log('Pulled new change: ', change);
+        options.onChange?.(change);
+      })
+      .on('paused', function (info) {
+        // replication was paused, usually because of a lost connection
+        options.onPaused?.(info);
+      })
+      // .on('active', function (info) {
+      //   // replication was resumed
+      //   options.onActive?.(info);
+      // })
+      .on('error', function (err) {
+        // totally unhandled error (shouldn't happen)
+        options.onError?.(err);
       });
-      options.onChange?.(change);
-    }).on('paused', function (info) {
-      // replication was paused, usually because of a lost connection
-      options.onPaused?.(info);
-    }).on('active', function (info) {
-      // replication was resumed
-      options.onActive?.(info);
-    }).on('error', function (err) {
-      // totally unhandled error (shouldn't happen)
-      options.onPaused?.(err);
-    });
+
+    // register new sync operation
+    PouchORM.activeSyncOperations[fromDB][toDB] = syncOperation;
   }
 
+  /**
+   * Stop a sync operation from a given database to another
+   * @param fromDB
+   * @param toDB
+   */
+  static stopSync(fromDB: string, toDB: string) {
+    PouchORM.activeSyncOperations[fromDB]?.[toDB]?.cancel();
+  }
+
+  /**
+   * Stop all sync operations from a given database.
+   * @param fromDB
+   */
+  static stopAllSync(fromDB: string) {
+    Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
+  }
 
   static async clearDatabase(dbName: string) {
 
@@ -75,10 +110,6 @@ export class PouchORM {
 
     const db = PouchORM.getDatabase(dbName);
     return await db.destroy();
-  }
-
-  static async registerCollection(collection: PouchCollection<IModel>) {
-    this.registeredCollections.add(collection);
   }
 
   static getClassValidator() {

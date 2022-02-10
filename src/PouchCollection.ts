@@ -116,21 +116,6 @@ export abstract class PouchCollection<T extends IModel> {
     return docs as T[];
   }
 
-  /**
-   * This is called when an item of this collection type is changed over the network.
-   * It is run in parallel with any other sync changes.
-   * Overwrite this to process changes for any given collection.
-   *
-   * @param selector
-   * @param opts
-   */
-  async onSyncChange(
-    change: PouchDB.Core.ChangesResponseChange<IModel>
-  ) {
-    // override and use
-    console.log(this.collectionTypeName, 'change received from network', change);
-  }
-
   async findOne(selector: Partial<T> | { [key: string]: any }): Promise<T> {
     const matches = await this.find(selector, {limit: 1});
     return matches.length > 0 ? matches[0] : null;

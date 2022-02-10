@@ -18,6 +18,7 @@ you can focus on your data... not the database.
 - Supports web, electron, react-native, and anything else pouchdb supports.
 - Supports optional class validation
 
+
 ## To install
 `npm i pouchorm`
 
@@ -25,6 +26,9 @@ or if you prefer yarn:
 `yarn add pouchorm`
 
 When using the optional class validation, also install `class-validator` as a dependency of your project using `npm` or `yarn`.
+
+## Changelog
+- 
 
 ## How to Use
 
