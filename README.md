@@ -28,6 +28,8 @@ or if you prefer yarn:
 When using the optional class validation, also install `class-validator` as a dependency of your project using `npm` or `yarn`.
 
 ## Changelog
+- v2.0.2
+  - Added optional ID generics i.e PouchCollection<T,IDType>, IModel<IDType>, and PouchModel<IDType>
 - v2.0.0
   - feat: changed meta name `$updatedBy` to simply `$by` to conserve space.
 - v1.6.0

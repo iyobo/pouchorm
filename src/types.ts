@@ -1,5 +1,5 @@
-export interface IModel {
-  _id?: string;
+export interface IModel<IDType extends string = string> {
+  _id?: IDType;
   _rev?: string;
   _deleted?: boolean;
   $timestamp?: number;
@@ -23,12 +23,12 @@ export enum ClassValidate {
   ON_AND_REJECT
 }
 
-export abstract class PouchModel<T> implements IModel {
+export abstract class PouchModel<T, IDType extends string = string> implements IModel {
   constructor(item: T) {
     Object.assign(this, item);
   }
 
-  _id?: string;
+  _id?: IDType;
   _rev?: string;
   _deleted?: boolean;
   $timestamp?: number;

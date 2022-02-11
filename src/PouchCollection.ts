@@ -7,7 +7,7 @@ import {PouchORM} from './PouchORM';
 const retry = require('async-retry');
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
-export abstract class PouchCollection<T extends IModel> {
+export abstract class PouchCollection<T extends IModel<IDType>, IDType extends string = string> {
 
   _state = CollectionState.NEW;
   db: PouchDB.Database;
@@ -17,7 +17,7 @@ export abstract class PouchCollection<T extends IModel> {
   private indexes: { fields: (keyof T)[]; name?: string }[] = [];
 
   // Define this static function to generate your own ids.
-  idGenerator: () => string | Promise<string>;
+  idGenerator: () => IDType | Promise<IDType>;
 
 
   constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF) {
@@ -100,7 +100,7 @@ export abstract class PouchCollection<T extends IModel> {
   }
 
   async find(
-    selector?: Partial<T> | { [key: string]: any },
+    selector?: Partial<T> | Record<string, any>,
     opts?: { sort?: string[], limit?: number },
   ): Promise<T[]> {
     const sel = selector || {};
@@ -116,13 +116,13 @@ export abstract class PouchCollection<T extends IModel> {
     return docs as T[];
   }
 
-  async findOne(selector: Partial<T> | { [key: string]: any }): Promise<T> {
+  async findOne(selector: Partial<T> | Record<string, any>): Promise<T> {
     const matches = await this.find(selector, {limit: 1});
     return matches.length > 0 ? matches[0] : null;
   }
 
   async findOrFail(
-    selector?: Partial<T> | { [key: string]: any },
+    selector?: Partial<T> | Record<string, any>,
     opts?: { sort?: string[], limit?: number },
   ): Promise<T[]> {
     const docs = await this.find(selector, opts);
@@ -134,21 +134,21 @@ export abstract class PouchCollection<T extends IModel> {
     return docs;
   }
 
-  async findOneOrFail(selector: Partial<T> | { [key: string]: any }): Promise<T> {
+  async findOneOrFail(selector: Partial<T> | Record<string, any>): Promise<T> {
     const matches = await this.findOrFail(selector, {limit: 1});
     return matches[0];
   }
 
-  async findById(_id: string): Promise<T> {
+  async findById(_id: IDType): Promise<T> {
     if (!_id) return null;
     return this.findOne({_id} as Partial<T>);
   }
 
-  async findByIdOrFail(_id: string): Promise<T> {
+  async findByIdOrFail(_id: IDType): Promise<T> {
     return this.findOneOrFail({_id} as Partial<T>);
   }
 
-  async removeById(id: string): Promise<void> {
+  async removeById(id: IDType): Promise<void> {
 
     const doc: T = await this.findById(id);
     if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB removeById', doc);
