@@ -35,7 +35,9 @@ describe('PouchORM', () => {
         onChange: (change) => {
           console.log('changeDoc', change.change.docs);
 
-          // only log collection changes
+          // only log collection PULL operations
+          if(change.direction === 'push') return;
+
           change.change.docs?.forEach(it => {
             if (it.$collectionType) changeLog.push(change);
           });
@@ -53,10 +55,26 @@ describe('PouchORM', () => {
         age: 40,
         lastChangedBy: 'userB'
       });
+      await b.upsert({
+        name: 'third Spyder',
+        age: 35,
+        lastChangedBy: 'userB'
+      });
 
       // wait 1 seconds
       await new Promise((r) => setTimeout(r, 1000));
-      expect(changeLog.length).toBe(1);
+      expect(changeLog.length).toBe(2);
+
+      // local change should not come in as a sync change
+      await a.upsert({
+        name: 'None Spyder',
+        age: 20,
+        lastChangedBy: 'userA'
+      });
+
+      // wait 1 seconds
+      await new Promise((r) => setTimeout(r, 1000));
+      expect(changeLog.length).toBe(2); // no change
 
     });
   });
