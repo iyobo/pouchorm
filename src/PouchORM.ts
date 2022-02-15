@@ -89,27 +89,32 @@ export class PouchORM {
   }
 
   /**
-   * Stop a sync operation from a given database to another
+   * Stop one or all sync operations from a db by name.
    * @param fromDB
-   * @param toDB
+   * @param toDB - if no destination DB specified, stop all sync ops for DB.
    */
-  static stopSync(fromDB: string, toDB: string) {
-    PouchORM.activeSyncOperations[fromDB]?.[toDB]?.cancel();
+  static stopSync(fromDB: string, toDB?: string) {
+    if (toDB)
+      Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
+    else
+      PouchORM.activeSyncOperations[fromDB]?.[toDB]?.cancel();
   }
 
   /**
-   * Stop all sync operations from a given database.
-   * @param fromDB
+   * deletes everything in a database
+   * @param dbName
    */
-  static stopAllSync(fromDB: string) {
-    Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
-  }
-
   static async clearDatabase(dbName: string) {
 
     const db = PouchORM.getDatabase(dbName);
 
     const result = await db.allDocs();
+    // const deletedDocs = result.rows.map(row => {
+    //   row.value.deleted = true;
+    //   return row;
+    // });
+    // return await db.bulkDocs(deletedDocs);
+
     return Promise.all(result.rows.map(function (row) {
       return db.remove(row.id, row.value.rev);
     }));

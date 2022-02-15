@@ -1,5 +1,5 @@
-import {Person} from './TestClasses';
-import {Fight} from './TestClasses';
+import {Person,Fight} from './TestClasses';
+
 
 export function makePerson(): Person {
   return {

@@ -25,10 +25,18 @@ describe('PouchORM', () => {
   });
 
   describe('onSyncChange', () => {
-    it('syncs between 2 databases', async () => {
+    const db1 = 'unit_test_sync_A';
+    const db2 = 'unit_test_sync_B';
 
-      const db1 = 'unit_test_sync_A';
-      const db2 = 'unit_test_sync_B';
+    afterEach(async () => {
+      await PouchORM.stopSync(db1);
+    });
+
+    afterAll(async ()=>{
+      await Promise.all([PouchORM.clearDatabase(db1), PouchORM.clearDatabase(db2)]);
+    })
+
+    it('syncs between 2 databases', async () => {
 
       const changeLog = [];
       PouchORM.startSync(db1, db2, {
@@ -36,7 +44,7 @@ describe('PouchORM', () => {
           console.log('changeDoc', change.change.docs);
 
           // only log collection PULL operations
-          if(change.direction === 'push') return;
+          if (change.direction === 'push') return;
 
           change.change.docs?.forEach(it => {
             if (it.$collectionType) changeLog.push(change);

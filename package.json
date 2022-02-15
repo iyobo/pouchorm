@@ -18,12 +18,12 @@
     "url": "https://github.com/iyobo/pouchorm"
   },
   "scripts": {
-    "test": "jest --config jestconfig.json",
-    "test:watch": "jest --config jestconfig.json --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
     "build": "tsc",
     "prepublish": "tsc && npm run lint && npm test",
     "dev": "tsc -w",
-    "lint": "tslint -c tslint.json -p tsconfig.json"
+    "lint": "eslint --fix"
   },
   "files": [
     "dist/**/*"
@@ -43,11 +43,22 @@
     "@types/lodash": "^4.14.149",
     "@types/node": "^12.12.24",
     "@types/pouchdb": "^6.4.0",
+    "@typescript-eslint/eslint-plugin": "^5.9.0",
+    "@typescript-eslint/parser": "^5.9.0",
+    "eslint": "7.29.0",
+    "eslint-config-prettier": "8.3.0",
+    "eslint-config-standard": "16.0.3",
+    "eslint-plugin-import": "2.23.4",
+    "eslint-plugin-node": "11.1.0",
+    "eslint-plugin-prettier": "3.4.0",
+    "eslint-plugin-promise": "5.1.0",
+    "eslint-plugin-react": "7.24.0",
+    "eslint-plugin-standard": "5.0.0",
     "jest": "^24.8.0",
     "pouchdb-adapter-memory": "^7.2.2",
+    "prettier": "2.3.1",
     "supertest": "^4.0.2",
     "ts-jest": "^24.2.0",
-    "tslint": "^5.20.1",
     "typescript": "^3.7.4"
   },
   "optionalDependencies": {

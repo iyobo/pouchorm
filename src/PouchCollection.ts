@@ -2,10 +2,10 @@ import {ClassValidate, CollectionState, IModel} from './types';
 import {UpsertHelper} from './helpers';
 import {v4 as uuid} from 'uuid';
 import {PouchORM} from './PouchORM';
+import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
 
 const retry = require('async-retry');
-import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
 export abstract class PouchCollection<T extends IModel<IDType>, IDType extends string = string> {
 

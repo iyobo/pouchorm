@@ -289,8 +289,7 @@ Introducing `PouchORM.startSync(fromPath, toPath, opts)` where either paths coul
 be local paths/names or a remote db url path. Within `opts`, you can specify callbacks that trigger upon specific events
 during the realtime sync e.g `onChange`, `onError`,`onStart`, etc. Have a look at the reference.
 
-You can also cancel real-time sync by `PouchORM.stopSync(fromPath, toPath)` or if you want to stop all active sync 
-operations originating from a specific DB, `PouchORM.stopAllSync(fromPath)`.
+You can also cancel real-time sync by `PouchORM.stopSync(fromPath, toPath?)`. If the second parameter is null, it will stop all sync ops for that db regardless of destination.
 
 ## Supporting the Project
 If you use PouchORM and it's helping you do awesome stuff, be a sport and  <a href="https://www.buymeacoffee.com/iyobo" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a> or <a href="https://www.patreon.com/bePatron?u=19661939" data-patreon-widget-type="become-patron-button">Become a Patron!</a>. PRs are also welcome.
