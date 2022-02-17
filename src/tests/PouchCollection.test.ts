@@ -15,7 +15,7 @@ describe('PouchCollection Instance', () => {
   const personCollection: PersonCollection = new PersonCollection(dbName);
   const accountCollection: AccountCollection = new AccountCollection(dbName);
 
-  afterEach(async () => PouchORM.clearDatabase(dbName));
+
 
 
   describe('upsert', () => {
@@ -173,18 +173,19 @@ describe('PouchCollection Instance', () => {
       expect(bulkAccounts).toHaveLength(3);
 
     });
+    afterEach(async () => PouchORM.clearDatabase(dbName));
 
     describe('finding with', () => {
       describe('find', () => {
-        it('gets all interface-based items matching indexed fields', async () => {
-
-          const guys = await personCollection.find({age: 28});
-          expect(guys).toHaveLength(2);
-        });
         it('gets all interface-based items matching non-indexed fields', async () => {
 
           const guys = await personCollection.find({name: 'Kingsley'});
           expect(guys).toHaveLength(1);
+        });
+        it('gets all interface-based items matching indexed fields', async () => {
+
+          const guys = await personCollection.find({age: 28});
+          expect(guys).toHaveLength(2);
         });
         it('gets all class-based items matching indexed fields', async () => {
 

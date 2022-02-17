@@ -109,15 +109,14 @@ export class PouchORM {
     const db = PouchORM.getDatabase(dbName);
 
     const result = await db.allDocs();
-    // const deletedDocs = result.rows.map(row => {
-    //   row.value.deleted = true;
-    //   return row;
-    // });
-    // return await db.bulkDocs(deletedDocs);
+    const deletedDocs = result.rows.map(row => {
+      return {_id: row.id, _rev: row.value.rev, _deleted: true};
+    });
+    return await db.bulkDocs(deletedDocs);
 
-    return Promise.all(result.rows.map(function (row) {
-      return db.remove(row.id, row.value.rev);
-    }));
+    // return Promise.all(result.rows.map(function (row) {
+    //   return db.remove(row.id, row.value.rev);
+    // }));
   }
 
   static async deleteDatabase(dbName: string) {
