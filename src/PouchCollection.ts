@@ -17,7 +17,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
   private indexes: { fields: (keyof T)[]; name?: string }[] = [];
 
   // Define this static function to generate your own ids.
-  idGenerator: () => IDType | Promise<IDType>;
+  idGenerator: (item?: T) => IDType | Promise<IDType>;
 
 
   constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF) {
@@ -163,7 +163,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
   private setMetaFields = async (item: T) => {
     if (!item._id) {
-      item._id = (await this.idGenerator?.()) || uuid();
+      item._id = (await this.idGenerator?.(item)) || uuid();
     }
 
     item.$timestamp = Date.now();

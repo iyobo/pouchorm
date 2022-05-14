@@ -219,7 +219,7 @@ collection object. This can be a normal or async function that returns a string.
 import {personCollection} from '...'
 
 
-personCollection.idGenerator = () => {
+personCollection.idGenerator = (item) => {
   return 'randomIdString';
 };
 
@@ -231,7 +231,7 @@ p._id === 'randomIdString' // true
 You can also do:
 
 ```typescript
-personCollection.idGenerator = async () => {
+personCollection.idGenerator = async (item) => {
   const anotherString = await someAsyncIDStringBuilder()
   return anotherString;
 };
