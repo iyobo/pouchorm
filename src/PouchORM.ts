@@ -94,10 +94,14 @@ export class PouchORM {
    * @param toDB - if no destination DB specified, stop all sync ops for DB.
    */
   static stopSync(fromDB: string, toDB?: string) {
-    if (toDB)
-      Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
-    else
+    if (toDB){
+      // close connection to that db
       PouchORM.activeSyncOperations[fromDB]?.[toDB]?.cancel();
+    }
+    else {
+      // close all connections
+      Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
+    }
   }
 
   /**
