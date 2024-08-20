@@ -1,5 +1,7 @@
 # PouchORM
 
+[![CI](https://github.com/iyobo/pouchorm/actions/workflows/main.yml/badge.svg)](https://github.com/iyobo/pouchorm/actions/workflows/main.yml)
+
 The definitive ORM for working with PouchDB.
 
 The Pouch/Couch database ecosystem is still the best choice for client-side products that need the complex 
