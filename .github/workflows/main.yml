@@ -29,4 +29,8 @@ jobs:
         mv coverage-badge.json ./coverage.json
         git add coverage.json
         git commit -m "Update coverage badge"
+    - name: Push changes
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
         git push origin HEAD:main
