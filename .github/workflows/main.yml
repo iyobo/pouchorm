@@ -16,7 +16,6 @@ jobs:
     - name: Extract coverage percentage
       id: extract_coverage
       run: |
-        # Extract the "Statements" percentage from the Coverage summary
         COVERAGE=$(awk '/Statements/ {print $3}' coverage.txt | tr -d '%')
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
     - name: Create coverage badge
