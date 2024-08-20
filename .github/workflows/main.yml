@@ -50,4 +50,5 @@ jobs:
         git commit -m "Update coverage badge"
     - name: Push changes
       run: |
+        # push to master
         git push origin HEAD:master
