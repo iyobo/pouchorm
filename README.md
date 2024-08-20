@@ -61,7 +61,7 @@ Consider this definition of a model and it's collection.
     
     export class PersonCollection extends PouchCollection<IPerson> {
         
-        // Optional. Overide to define collection-specific indexes.
+        // Optional. Override to define collection-specific indexes.
         async beforeInit(): Promise<void> {
             
             await this.addIndex(['age']); // be sure to create an index for what you plan to filter by.
