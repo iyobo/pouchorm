@@ -37,10 +37,10 @@ jobs:
         --data-urlencode "label=$LABEL" \
         --data-urlencode "message=$MESSAGE" \
         --data-urlencode "color=$COLOR" \
-        -o coverage-badge.json
+        -o coverage-badge.svg
         
         # Print the generated badge to verify
-        cat coverage-badge.json
+        cat coverage-badge.svg
     - name: Configure Git for pushing
       run: |
         git config user.name "GitHub Action"
@@ -48,7 +48,7 @@ jobs:
         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
     - name: Commit coverage badge
       run: |
-        mv coverage-badge.json ./coverage.json
+        mv coverage-badge.svg ./coverage.svg
         git add .
         git commit -m "Update coverage badge"
     - name: Push changes
