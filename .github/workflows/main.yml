@@ -50,7 +50,9 @@ jobs:
       run: |
         mv coverage-badge.svg ./coverage.svg
         git add .
-        git commit -m "Update coverage badge"
+        if ! git diff-index --quiet HEAD; then
+          git commit -m "Update coverage badge"
+        fi
     - name: Push changes
       run: |
         # push to master
