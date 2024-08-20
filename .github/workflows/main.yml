@@ -46,11 +46,11 @@ jobs:
     - name: Commit coverage badge
       run: |
         mv coverage-badge.json ./coverage.json
-        git add coverage.json
-        if ! git diff-index --quiet HEAD; then
-          git commit -m "Update coverage badge"
-          git push origin master
-        fi
+        git add .
+#        if ! git diff-index --quiet HEAD; then
+        git commit -m "Update coverage badge"
+        git push origin master
+#        fi
     - name: Push changes
       run: |
         git push origin HEAD:master
