@@ -41,6 +41,7 @@ export class PouchORM {
 
   /**
    * A map of active sync operations
+   * from -> to -> SyncOp reference
    */
   public static activeSyncOperations: Record<string, Record<string, Sync<IModel>>> = {};
 

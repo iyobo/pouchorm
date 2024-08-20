@@ -262,7 +262,7 @@ describe('PouchCollection Instance', () => {
       it('validation of class Model properties', async () => {
         const a = new Account({
           name: 'Spyder',
-          age: '32' as any
+          age: '32' as unknown as number
         });
         let error: ValidationError[];
 
