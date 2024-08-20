@@ -22,15 +22,16 @@ jobs:
     - name: Create coverage badge
       run: |
         curl -X POST -d "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${{ env.COVERAGE }}%\", \"color\": \"brightgreen\"}" https://img.shields.io/endpoint > coverage-badge.json
+    - name: Configure Git for pushing
+      run: |
+        git config user.name "GitHub Action"
+        git config user.email "action@github.com"
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
     - name: Commit coverage badge
       run: |
-        git config --global user.name 'GitHub Action'
-        git config --global user.email 'action@github.com'
         mv coverage-badge.json ./coverage.json
         git add coverage.json
         git commit -m "Update coverage badge"
     - name: Push changes
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         git push origin HEAD:main
