@@ -21,7 +21,7 @@ jobs:
         echo "COVERAGE=$COVERAGE"
     - name: Create coverage badge
       run: |
-        curl -X POST -d '{"schemaVersion": 1, "label": "coverage", "message": "'"${{ env.COVERAGE }}"'%'", "color": "brightgreen"}' https://img.shields.io/endpoint > coverage-badge.json
+        curl -X POST -d "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"${{ env.COVERAGE }}%\", \"color\": \"brightgreen\"}" https://img.shields.io/endpoint > coverage-badge.json
     - name: Commit coverage badge
       run: |
         git config --global user.name 'GitHub Action'
