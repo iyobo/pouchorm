@@ -6,5 +6,6 @@ module.exports = {
   "moduleFileExtensions": ["ts", "js", "json", "node"],
   "preset": "ts-jest/presets/js-with-ts",
   "testEnvironment": "node",
-  "testMatch": null
+  "testMatch": null,
+  coverageReporters: ["json", "lcov", "text", "clover", "text-summary"]
 }
