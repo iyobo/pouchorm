@@ -68,3 +68,5 @@ typings/
 
 dist/
 unit_test*
+
+coverage.txt
