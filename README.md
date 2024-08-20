@@ -1,7 +1,8 @@
 # PouchORM
 
 [![CI](https://github.com/iyobo/pouchorm/actions/workflows/main.yml/badge.svg?cacheBuster=1)](https://github.com/iyobo/pouchorm/actions/workflows/main.yml?cacheBuster=1)
-![Coverage](https://raw.githubusercontent.com/iyobo/pouchorm/master/coverage.svg)
+<img src="https://raw.githubusercontent.com/iyobo/pouchorm/master/coverage.svg">
+
 
 
 The definitive ORM for working with PouchDB.
