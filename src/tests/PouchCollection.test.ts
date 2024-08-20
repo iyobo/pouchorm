@@ -1,22 +1,18 @@
 // Person.ts
 
-import {Account, AccountCollection, Person, PersonCollection} from './util/TestClasses';
-import {ValidationError} from 'class-validator';
-import {ClassValidate} from '../types';
-import {UpsertHelper} from '../helpers';
-import {PouchORM} from '../PouchORM';
-import {makePerson} from './util/testHelpers';
+import { Account, AccountCollection, Person, PersonCollection } from './util/TestClasses';
+import { ValidationError } from 'class-validator';
+import { ClassValidate } from '../types';
+import { UpsertHelper } from '../helpers';
+import { PouchORM } from '../PouchORM';
+import { makePerson } from './util/testHelpers';
 
 const dbName = 'unit_test';
 
 describe('PouchCollection Instance', () => {
 
-
   const personCollection: PersonCollection = new PersonCollection(dbName);
   const accountCollection: AccountCollection = new AccountCollection(dbName);
-
-
-
 
   describe('upsert', () => {
     it('creates new documents if does not exist', async () => {
@@ -74,6 +70,37 @@ describe('PouchCollection Instance', () => {
     });
 
   });
+
+  describe('addIndex', () => {
+    beforeEach(async () => {
+      await personCollection.removeIndex('testIndex');
+    });
+
+    it('can create named indexes', async () => {
+      const f = await personCollection.addIndex(['name'], 'testIndex');
+      expect(personCollection._indexes[3]).toBeTruthy();
+      expect(personCollection._indexes[3]?.name).toBe('testIndex');
+      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
+    });
+
+    it('can create compound indexes with multiple fields', async () => {
+      await personCollection.addIndex(['name', 'otherInfo'], 'testIndex');
+      expect(personCollection._indexes[3]).toBeTruthy();
+      expect(personCollection._indexes[3]?.name).toBe('testIndex');
+      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
+      expect(personCollection._indexes[3]?.fields?.includes('otherInfo')).toBe(true);
+    });
+
+    it('adds $collectionType field to indexes', async () => {
+      // Adding the $collectionType to every index of this collection for fast collection-level querying
+      await personCollection.addIndex(['name'], 'testIndex');
+      expect(personCollection._indexes[3]).toBeTruthy();
+      expect(personCollection._indexes[3]?.fields?.length).toBe(2);
+      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
+      expect(personCollection._indexes[3]?.fields?.includes('$collectionType')).toBe(true);
+    });
+  });
+
   describe('bulkUpsert', () => {
     it('creates documents in array', async () => {
 

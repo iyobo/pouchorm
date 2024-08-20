@@ -1,3 +1,4 @@
+import { name } from 'pouchdb';
 import {ClassValidate, CollectionState, IModel} from './types';
 import {UpsertHelper} from './helpers';
 import {v4 as uuid} from 'uuid';
@@ -14,7 +15,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
   collectionTypeName: string;
   validate: ClassValidate;
 
-  private indexes: { fields: (keyof T)[]; name?: string }[] = [];
+  _indexes: { fields: (keyof T)[]; name?: string, indexId: string}[] = [];
 
   // Define this static function to generate your own ids.
   idGenerator: (item?: T) => IDType | Promise<IDType>;
@@ -85,18 +86,37 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
     this._state = CollectionState.READY;
   }
 
+  /**
+   * Creates an index. It is highly recommended to Provide a name to reference it later e.g if you ever need to delete it.
+   * @param {(keyof T)[]} fields
+   * @param {string} name
+   * @return {Promise<PouchDB.Find.CreateIndexResponse<{}>>}
+   */
   async addIndex(fields: (keyof T)[], name?: string): Promise<CreateIndexResponse<{}>> {
 
-    // append $collectionType to fields
-    fields.unshift('$collectionType');
-    this.indexes.push({fields, name});
-
-    return this.db.createIndex({
+    const res = await this.db.createIndex({
       index: {
         fields: fields as string[],
         name
       },
     });
+    // append $collectionType to fields
+    fields.unshift('$collectionType');
+    this._indexes.push({fields, name, indexId: (res as unknown as any)?.id });
+
+    return res
+  }
+
+  async removeIndex(name: string){
+    const idx = this._indexes.findIndex(it=> it.name === name)
+    if(idx > -1) {
+      await this.db.deleteIndex({
+        ddoc: this._indexes[idx].indexId,
+        name
+      })
+
+      this._indexes.splice(idx, 1);
+    }
   }
 
   async find(
