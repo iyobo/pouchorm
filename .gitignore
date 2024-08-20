@@ -70,3 +70,4 @@ dist/
 unit_test*
 
 coverage.txt
+badge.json
