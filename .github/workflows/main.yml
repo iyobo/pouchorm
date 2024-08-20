@@ -18,6 +18,7 @@ jobs:
       run: |
         COVERAGE=$(awk '/Statements/ {print $3}' coverage.txt | tr -d '%')
         echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+        echo "COVERAGE=$COVERAGE"
     - name: Create coverage badge
       run: |
         curl -X POST -d '{"schemaVersion": 1, "label": "coverage", "message": "'"${{ env.COVERAGE }}"'%'", "color": "brightgreen"}' https://img.shields.io/endpoint > coverage-badge.json
