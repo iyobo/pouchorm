@@ -13,19 +13,19 @@ jobs:
       run: yarn
     - name: Run Tests
       run: yarn test
-    - name: Extract coverage percentage
-      id: extract_coverage
-      run: |
-        COVERAGE=$(grep -oP '(?<=All files[^|]*\|)[\s\d]+(?=\|[\s\d]+%[\s\d]+%[\s\d]+%)' coverage/lcov-report/index.html | xargs)
-        echo "coverage=$COVERAGE" >> $GITHUB_ENV
-        - name: Create coverage badge
-          run: |
-            curl -X POST -d '{"schemaVersion": 1, "label": "coverage", "message": "'"$COVERAGE%"'", "color": "brightgreen"}' https://img.shields.io/endpoint > coverage-badge.json
-        - name: Commit coverage badge
-          run: |
-            git config --global user.name 'GitHub Action'
-            git config --global user.email 'action@github.com'
-            mv coverage-badge.json ./coverage.json
-            git add coverage.json
-            git commit -m "Update coverage badge"
-            git push
+#    - name: Extract coverage percentage
+#      id: extract_coverage
+#      run: |
+#        COVERAGE=$(grep -oP '(?<=All files[^|]*\|)[\s\d]+(?=\|[\s\d]+%[\s\d]+%[\s\d]+%)' coverage/lcov-report/index.html | xargs)
+#        echo "coverage=$COVERAGE" >> $GITHUB_ENV
+#        - name: Create coverage badge
+#          run: |
+#            curl -X POST -d '{"schemaVersion": 1, "label": "coverage", "message": "'"$COVERAGE%"'", "color": "brightgreen"}' https://img.shields.io/endpoint > coverage-badge.json
+#        - name: Commit coverage badge
+#          run: |
+#            git config --global user.name 'GitHub Action'
+#            git config --global user.email 'action@github.com'
+#            mv coverage-badge.json ./coverage.json
+#            git add coverage.json
+#            git commit -m "Update coverage badge"
+#            git push
