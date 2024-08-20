@@ -1,6 +1,7 @@
 # PouchORM
 
 [![CI](https://github.com/iyobo/pouchorm/actions/workflows/main.yml/badge.svg)](https://github.com/iyobo/pouchorm/actions/workflows/main.yml)
+![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/iyobo/pouchorm/main/coverage.json)
 
 The definitive ORM for working with PouchDB.
 
