@@ -32,6 +32,7 @@ jobs:
         mv coverage-badge.json ./coverage.json
         git add coverage.json
         git commit -m "Update coverage badge"
+        git push origin master
     - name: Push changes
       run: |
         git push origin HEAD:master
