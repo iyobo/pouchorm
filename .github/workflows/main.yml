@@ -27,17 +27,20 @@ jobs:
         echo "COVERAGE=$COVERAGE"
     - name: Create coverage badge
       run: |
-        # Ensure the COVERAGE environment variable is properly formatted
-        COVERAGE="${{ env.COVERAGE }}"
-
-        # Create the JSON payload
-        echo "{\"schemaVersion\": 1, \"label\": \"coverage\", \"message\": \"$COVERAGE%\", \"color\": \"brightgreen\"}" > badge.json
-
-        # Use curl to post the JSON to Shields.io
-        curl -X POST -H "Content-Type: application/json" \
-          -d @badge.json \
-          https://img.shields.io/endpoint \
-          -o coverage-badge.json
+        # Create the JSON payload and encode it for URL
+        LABEL="coverage"
+        MESSAGE="${{ env.COVERAGE }}%"
+        COLOR="brightgreen"
+        
+        # Use curl to fetch the badge
+        curl -G "https://img.shields.io/static/v1" \
+        --data-urlencode "label=$LABEL" \
+        --data-urlencode "message=$MESSAGE" \
+        --data-urlencode "color=$COLOR" \
+        -o coverage-badge.json
+        
+        # Print the generated badge to verify
+        cat coverage-badge.json
     - name: Configure Git for pushing
       run: |
         git config user.name "GitHub Action"
