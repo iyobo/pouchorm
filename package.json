@@ -1,6 +1,6 @@
 {
   "name": "pouchorm",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "PouchDB ORM for Typescript. Work with Multiple Pouch databases or multiple collections in a single database. Supports all platforms PouchDB supports.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
