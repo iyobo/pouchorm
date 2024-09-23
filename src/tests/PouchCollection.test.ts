@@ -101,6 +101,15 @@ describe('PouchCollection Instance', () => {
     });
   });
 
+  describe('onChange', () => {
+    it('upsert', () => {
+
+    });
+    it('delete', () => {
+
+    });
+  });
+
   describe('bulkUpsert', () => {
     it('creates documents in array', async () => {
 

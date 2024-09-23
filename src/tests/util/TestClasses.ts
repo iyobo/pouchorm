@@ -1,7 +1,6 @@
-import {IsNumber, IsString} from 'class-validator';
-import {IModel, PouchModel} from '../../types';
-import {PouchCollection} from '../../PouchCollection';
-import {PouchORM} from '../../PouchORM';
+import { IsNumber, IsString } from 'class-validator';
+import { PouchCollection } from '../../PouchCollection';
+import { IModel, PouchModel } from '../../types';
 
 // NOTE: Cannot test PouchORM.sync with memory adapter. Not supported.
 // PouchORM.PouchDB.plugin(require('pouchdb-adapter-memory'));
@@ -26,18 +25,20 @@ export class PersonCollection extends PouchCollection<Person> {
   async afterInit(): Promise<void> {
 
   }
+
+  async onChangeUpserted(item: Person): Promise<void> {
+
+  }
+
+  async onChangeDeleted(item: Person): Promise<void> {
+
+  }
+
+  async onChangeError(item: Person): Promise<void> {
+
+  }
 }
 
-export interface Fight extends IModel {
-  personAId: string;
-  personBId?: string;
-  winnerId?: string;
-  loserId?: string;
-}
-
-export class FightCollection extends PouchCollection<Fight> {
-
-}
 
 export class Account extends PouchModel<Account> {
   @IsString()

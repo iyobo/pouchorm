@@ -22,7 +22,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
 
   constructor(dbname: string, opts?: PouchDB.Configuration.DatabaseConfiguration, validate: ClassValidate = ClassValidate.OFF) {
-    this.db = PouchORM.getDatabase(dbname, opts);
+    this.db = PouchORM.ensureDatabase(dbname, this, opts);
     this.collectionTypeName = this.constructor.name;
     this.validate = validate;
     if (PouchORM.LOGGING) console.log('initializing collection :', this.collectionTypeName);
@@ -255,4 +255,15 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
     return result;
   }
 
+  async onChangeUpserted(item: T) {
+
+  }
+
+  async onChangeDeleted(item: T) {
+
+  }
+
+  async onChangeError(item: T) {
+
+  }
 }

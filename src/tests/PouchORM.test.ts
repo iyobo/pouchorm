@@ -28,6 +28,10 @@ describe('PouchORM', () => {
     const db1 = 'unit_test_sync_A';
     const db2 = 'unit_test_sync_B';
 
+    beforeEach(async () => {
+      PouchORM.ensureDatabase(db1, null)
+    })
+
     afterEach(async () => {
       await PouchORM.stopSync(db1);
     });
