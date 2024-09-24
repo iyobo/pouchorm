@@ -26,16 +26,15 @@ export class PersonCollection extends PouchCollection<Person> {
 
   }
 
-  async onChangeUpserted(item: Person): Promise<void> {
-
+  async onChangeUpserted(item): Promise<void> {
+    console.log('onChangeUpserted',item)
   }
 
-  async onChangeDeleted(item: Person): Promise<void> {
-
+  async onChangeDeleted(item): Promise<void> {
+    console.log('onChangeDeleted',item)
   }
 
-  async onChangeError(item: Person): Promise<void> {
-
+  async onChangeError(error): Promise<void> {
   }
 }
 
@@ -49,5 +48,7 @@ export class Account extends PouchModel<Account> {
 }
 
 export class AccountCollection extends PouchCollection<Account> {
-
+  async onChangeUpserted(item): Promise<void> {
+    // console.log(item)
+  }
 }

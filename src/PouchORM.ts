@@ -65,6 +65,8 @@ export class PouchORM {
     }).on('change', function (change) {
 
       PouchORM.databases[dbName].collectionInstances.forEach(collectionInstance => {
+        if(!collectionInstance || change.doc.$collectionType !== collectionInstance.collectionTypeName) return
+
         if (change.deleted) {
           void collectionInstance.onChangeDeleted(change.doc);
         } else {

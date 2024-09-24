@@ -7,3 +7,7 @@ export function makePerson(): Person {
     age: 40,
   };
 }
+
+export async function waitFor(time = 1000) {
+  await new Promise((r) => setTimeout(r, time));
+}

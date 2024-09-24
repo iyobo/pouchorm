@@ -5,7 +5,7 @@ import { ValidationError } from 'class-validator';
 import { ClassValidate } from '../types';
 import { UpsertHelper } from '../helpers';
 import { PouchORM } from '../PouchORM';
-import { makePerson } from './util/testHelpers';
+import { makePerson, waitFor } from './util/testHelpers';
 
 const dbName = 'unit_test';
 
@@ -13,6 +13,11 @@ describe('PouchCollection Instance', () => {
 
   const personCollection: PersonCollection = new PersonCollection(dbName);
   const accountCollection: AccountCollection = new AccountCollection(dbName);
+
+  afterEach(async () => {
+    jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
 
   describe('upsert', () => {
     it('creates new documents if does not exist', async () => {
@@ -69,6 +74,46 @@ describe('PouchCollection Instance', () => {
       personCollection.idGenerator = null;
     });
 
+    it('calls onChangeUpserted when new', async () => {
+      const a = new Account({
+        name: 'Alie',
+        age: 17
+      });
+      const internalMethodSpy = jest.spyOn(accountCollection, 'onChangeUpserted');
+      const account = await accountCollection.upsert(a);
+
+      await waitFor()
+      expect(internalMethodSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        name: 'Alie',
+        age: 17
+      }));
+
+    });
+
+    it('calls onChangeUpserted when updating', async () => {
+      const a = new Account({
+        _id: "alie123",
+        name: 'Alie',
+        age: 17
+      });
+      const internalMethodSpy = jest.spyOn(accountCollection, 'onChangeUpserted');
+      const persistedA = await accountCollection.upsert(a);
+      persistedA.age++;
+      await accountCollection.upsert(persistedA);
+
+      await waitFor()
+      expect(internalMethodSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
+        name: 'Alie',
+        age: 17
+      }));
+
+      expect(internalMethodSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
+        name: 'Alie',
+        age: 18
+      }));
+
+    });
+
   });
 
   describe('addIndex', () => {
@@ -98,15 +143,6 @@ describe('PouchCollection Instance', () => {
       expect(personCollection._indexes[3]?.fields?.length).toBe(2);
       expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
       expect(personCollection._indexes[3]?.fields?.includes('$collectionType')).toBe(true);
-    });
-  });
-
-  describe('onChange', () => {
-    it('upsert', () => {
-
-    });
-    it('delete', () => {
-
     });
   });
 
@@ -162,6 +198,40 @@ describe('PouchCollection Instance', () => {
       expect(bulkPersons[2].id).toBeTruthy();
       expect(bulkPersons[3].id).toBeTruthy();
       expect(bulkPersons[3].id).toBe(person._id);
+    });
+
+    it('calls onChangeUpserted for each item', async () => {
+
+      const spy = jest.spyOn(personCollection, 'onChangeUpserted');
+      const bulkPersons = await personCollection.bulkUpsert([
+        {
+          name: 'tifa1',
+          age: 11
+        },
+        {
+          name: 'cloud1',
+          age: 22
+        },
+        {
+          name: 'sephiroth1',
+          age: 33
+        },
+      ]);
+
+      await waitFor()
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'tifa1',
+        age: 11
+      }));
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'cloud1',
+        age: 22
+      }));
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'sephiroth1',
+        age: 33
+      }));
+
     });
   });
 
@@ -273,6 +343,23 @@ describe('PouchCollection Instance', () => {
         expect(cloud2).toBeFalsy();
 
       });
+
+      // it('calls onChangeDeleted', async () => {
+      //   jest.resetAllMocks()
+      //   jest.clearAllMocks()
+      //
+      //   const p1 = await personCollection.find({});
+      //
+      //   const cloud = await personCollection.findById(p1[1]._id);
+      //   expect(cloud).toBeTruthy();
+      //
+      //   const spy = jest.spyOn(personCollection, 'onChangeDeleted');
+      //   await personCollection.removeById(cloud._id);
+      //
+      //   await waitFor(1000)
+      //   expect(spy).toHaveBeenCalledTimes(1)
+      //   expect(spy).toHaveBeenCalledWith(expect.objectContaining(p1[1]))
+      // })
     });
     describe('bulkRemove', () => {
 
@@ -295,6 +382,7 @@ describe('PouchCollection Instance', () => {
         const account = await accountCollection.upsert(a);
         expect(account.age).toBe(a.age);
       });
+
       it('validation of class Model properties', async () => {
         const a = new Account({
           name: 'Spyder',
@@ -312,6 +400,7 @@ describe('PouchCollection Instance', () => {
 
         expect(error[0]).toBeInstanceOf(ValidationError);
       });
+
 
     });
   });

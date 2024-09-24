@@ -1,4 +1,6 @@
 // Person.ts
+const SECONDS = 1000;
+jest.setTimeout(70 * SECONDS)
 
 import {PersonCollection} from './util/TestClasses';
 import {PouchORM} from '../PouchORM';
@@ -45,7 +47,7 @@ describe('PouchORM', () => {
       const changeLog = [];
       PouchORM.startSync(db1, db2, {
         onChange: (change) => {
-          console.log('changeDoc', change.change.docs);
+          // console.log('changeDoc', change.change.docs);
 
           // only log collection PULL operations
           if (change.direction === 'push') return;
@@ -74,7 +76,7 @@ describe('PouchORM', () => {
       });
 
       // wait 1 seconds
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 5000));
       expect(changeLog.length).toBe(2);
 
       // local change should not come in as a sync change

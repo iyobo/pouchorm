@@ -263,7 +263,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
   }
 
-  async onChangeError(item: T) {
+  async onChangeError(error: Error) {
 
   }
 }

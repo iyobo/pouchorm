@@ -18,7 +18,7 @@ jobs:
     - name: Install and build
       run: yarn
     - name: Run Tests
-      run: yarn test >> coverage.txt
+      run: yarn test:coverage >> coverage.txt
     - name: Extract coverage percentage
       id: extract_coverage
       run: |
