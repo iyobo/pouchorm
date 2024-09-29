@@ -10,8 +10,9 @@ The definitive ORM for working with PouchDB.
 The Pouch/Couch database ecosystem is a great choice for client-side products that need the complex 
 (and seemingly oxymoronic) sibling-features of Offline-First **and** Realtime collaboration.
 
-But the base pouchDB interface is rather bare and oft-times painful to work with. 
-PouchORM rolls in to the rescue and does a lot of heavy lifting for you and makes it easy to get going with PouchDB so 
+But the base pouchDB interface is rather bare and oft-times painful to work with. That's where PouchORM comes in. 
+
+PouchORM does a lot of the heavy lifting for you and makes it easy to get going with PouchDB so 
 you can focus on your data... not the database.
 
 ## Highlights
