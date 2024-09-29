@@ -7,7 +7,7 @@
 
 The definitive ORM for working with PouchDB.
 
-The Pouch/Couch database ecosystem is still the best choice for client-side products that need the complex 
+The Pouch/Couch database ecosystem is a great choice for client-side products that need the complex 
 (and seemingly oxymoronic) sibling-features of Offline-First **and** Realtime collaboration.
 
 But the base pouchDB interface is rather bare and oft-times painful to work with. 
