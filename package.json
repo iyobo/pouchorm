@@ -18,7 +18,8 @@
     "url": "https://github.com/iyobo/pouchorm"
   },
   "scripts": {
-    "test": "jest --coverage",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "build": "tsc",
     "prepublish": "tsc && npm run lint && npm test",
