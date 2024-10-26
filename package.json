@@ -33,8 +33,8 @@
   "license": "MIT",
   "dependencies": {
     "async-retry": "^1.3.1",
-    "pouchdb": "^7.2.2",
-    "pouchdb-find": "^7.1.1",
+    "pouchdb": "^9.0.0",
+    "pouchdb-find": "8.0.1",
     "reflect-metadata": "^0.1.13",
     "uuid": "^8.3.2"
   },
@@ -43,7 +43,7 @@
     "@types/jest": "^24.0.25",
     "@types/lodash": "^4.14.149",
     "@types/node": "^12.12.24",
-    "@types/pouchdb": "^6.4.0",
+    "@types/pouchdb": "^6.4.2",
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
     "eslint": "7.29.0",
@@ -56,7 +56,7 @@
     "eslint-plugin-react": "7.24.0",
     "eslint-plugin-standard": "5.0.0",
     "jest": "^24.8.0",
-    "pouchdb-adapter-memory": "^7.2.2",
+    "pouchdb-adapter-memory": "^9.0.0",
     "prettier": "2.3.1",
     "supertest": "^4.0.2",
     "ts-jest": "^24.2.0",

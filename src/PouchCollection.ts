@@ -94,14 +94,15 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
    */
   async addIndex(fields: (keyof T)[], name?: string): Promise<CreateIndexResponse<{}>> {
 
+    // append $collectionType to fields
+    fields.unshift('$collectionType');
     const res = await this.db.createIndex({
       index: {
         fields: fields as string[],
         name
       },
     });
-    // append $collectionType to fields
-    fields.unshift('$collectionType');
+
     this._indexes.push({fields, name, indexId: (res as unknown as any)?.id });
 
     return res
