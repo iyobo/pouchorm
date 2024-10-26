@@ -1,7 +1,10 @@
+import { PouchORM } from '../PouchORM'
 import { PersonCollection } from '../tests/util/TestClasses'
 
 async function main() {
+
   const personCollection = new PersonCollection('sandbox_temp')
+  await PouchORM.clearDatabase('sandbox_temp')
 
   const person = await personCollection.upsert({name: 'Mofe', age: 34})
   const person2 = await personCollection.upsert({name: 'Amy', age: 25})

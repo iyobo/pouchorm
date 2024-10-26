@@ -35,7 +35,7 @@ export class PouchORM {
 
     // ensure the database exists
     if (!PouchORM.databases[dbName]) {
-      if (PouchORM.LOGGING) console.log('Registering DB: ', dbName);
+      if (PouchORM.LOGGING) console.log('PouchORM Registering DB: ', dbName);
 
       // Creates or loads the DB
       const db = new PouchDB(dbName, {adapter: PouchORM.adapter, ...opts});
@@ -119,7 +119,7 @@ export class PouchORM {
     const syncOperation = localDb.sync(remoteDB, realOps)
       .on('change', function (change: PouchDB.Replication.SyncResult<IModel>) {
         // yo, something changed!
-        if (PouchORM.LOGGING) console.log('Pulled new change: ', change);
+        if (PouchORM.LOGGING) console.log('PouchORM Pulled new change: ', change);
         options.onChange?.(change);
       })
       .on('paused', function (info) {

@@ -36,7 +36,7 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
       // We should wait for init's retries. Honestly this is an extreme case...
       return retry(async bail => {
         // if anything throws, we retry
-        console.log(`waiting for initialization of ${this.constructor.name}...`);
+        if (PouchORM.LOGGING) console.log(`PouchORM waiting for initialization of ${this.constructor.name}...`);
         if (this._state === CollectionState.READY)
           throw new Error(`PouchCollection: Cannot perform operations on uninitialized collection ${this.constructor.name}`);
 
@@ -171,13 +171,13 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
   async removeById(id: IDType): Promise<void> {
 
     const doc: T = await this.findById(id);
-    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB removeById', doc);
+    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM removeById', doc);
     if (doc) await this.db.remove(doc._id, doc._rev);
   }
 
   async remove(item: T): Promise<void> {
 
-    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB remove', item);
+    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM remove', item);
     if (item) await this.db.remove(item._id, item._rev);
   }
 
@@ -212,9 +212,9 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
       item = deltaFunc(existing);
 
-      if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB updating', item);
+      if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM updating', item);
     } else {
-      if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB create', item);
+      if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM create', item);
     }
 
     if (validate !== ClassValidate.OFF && PouchORM.ClassValidator === undefined) PouchORM.getClassValidator();
@@ -234,12 +234,12 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
     await this.setMetaFields(item);
 
-    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB beforeSave', item);
+    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM beforeSave', item);
 
     await this.db.put(item, {force: true});
 
     const doc = await this.findById(item._id);
-    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchDB afterSave', doc);
+    if (PouchORM.LOGGING) console.log(this.constructor.name + ' PouchORM afterSave', doc);
     return doc;
   }
 
