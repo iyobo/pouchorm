@@ -1,4 +1,3 @@
-import { name } from 'pouchdb';
 import {ClassValidate, CollectionState, IModel} from './types';
 import {UpsertHelper} from './helpers';
 import {v4 as uuid} from 'uuid';
