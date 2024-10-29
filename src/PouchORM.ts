@@ -92,6 +92,7 @@ export class PouchORM {
   // public
   public static stopChangeListener(dbName: string) {
     PouchORM.databases[dbName].changeListener?.cancel()
+    PouchORM.databases[dbName].changeListener = undefined
   }
 
   public static setUser(userId: string) {
