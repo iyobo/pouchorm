@@ -24,7 +24,10 @@
     "build": "tsc",
     "prepublish": "tsc && npm run lint && npm test",
     "dev": "tsc -w",
-    "lint": "eslint --fix"
+    "lint": "eslint --fix",
+    "publish:patch": "npm run prepublish && npm version patch && npm version push",
+    "publish:minor": "npm run prepublish && npm version minor && npm version push",
+    "publish:major": "npm run prepublish && npm version major && npm version push"
   },
   "files": [
     "dist/**/*"
