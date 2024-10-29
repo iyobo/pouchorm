@@ -89,11 +89,12 @@ export class PouchORM {
     }
   }
 
-  static stopChangeListener(dbName: string) {
+  // public
+  public static stopChangeListener(dbName: string) {
     PouchORM.databases[dbName].changeListener?.cancel()
   }
 
-  static setUser(userId: string) {
+  public static setUser(userId: string) {
     PouchORM.userId = userId;
   }
 
