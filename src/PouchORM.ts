@@ -46,10 +46,8 @@ export class PouchORM {
     PouchORM.databases[dbName].collectionInstances.add(pouchCollection);
 
     // If there is no change listener for the DB, start one.
-    // This will mate it so all related collections get informed when the db changes.
-    if (!PouchORM.databases[dbName].changeListener) {
-      PouchORM.databases[dbName].changeListener = PouchORM.createChangeListener(dbName);
-    }
+    // This will make it so all related collections get informed when the db changes.
+    PouchORM.beginChangeListener(dbName)
 
     return PouchORM.databases[dbName].db;
   }
@@ -81,6 +79,18 @@ export class PouchORM {
         void collectionInstance.onChangeError(error);
       });
     });
+  }
+
+  static beginChangeListener(dbName: string) {
+    // If there is no change listener for the DB, start one.
+    // This will make it so all related collections get informed when the db changes.
+    if (!PouchORM.databases[dbName].changeListener) {
+      PouchORM.databases[dbName].changeListener = PouchORM.createChangeListener(dbName);
+    }
+  }
+
+  static stopChangeListener(dbName: string) {
+    PouchORM.databases[dbName].changeListener?.cancel()
   }
 
   static setUser(userId: string) {
