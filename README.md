@@ -57,7 +57,7 @@ Consider this definition of a model and it's collection.
     export interface IPerson extends IModel {
         name: string;
         age: number;
-        otherInfo: { [key: string]: any };
+        otherInfo: Record<string, unknown>;
     }
     
     export class PersonCollection extends PouchCollection<IPerson> {
