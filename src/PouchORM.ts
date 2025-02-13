@@ -27,9 +27,9 @@ export class PouchORM {
   /**
    * Set this to enable user change logging with this id for each upsert
    */
-  static userId;
+  static userId: string;
 
-  static adapter;
+  static adapter: string;
 
   static ensureDatabase(dbName: string, pouchCollection: PouchCollection<any>, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
 
