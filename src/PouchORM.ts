@@ -9,7 +9,6 @@ export type ORMSyncOptions = {
   opts?: PouchDB.Configuration.DatabaseConfiguration,
   onChange?: (change: PouchDB.Replication.SyncResult<IModel>) => unknown
   onPaused?: (info: unknown) => unknown
-  onActive?: (info: PouchDB.Replication.SyncResult<IModel>) => unknown
   onError?: (error: unknown) => unknown
 };
 
@@ -147,10 +146,6 @@ export class PouchORM {
       .on('paused', function (info) {
         // replication was paused, usually because of a lost connection
         options.onPaused?.(info);
-      })
-      .on('active', function (info) {
-        // replication was resumed
-        options.onActive?.(info);
       })
       .on('error', function (err) {
         // totally unhandled error (shouldn't happen)
