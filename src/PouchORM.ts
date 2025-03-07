@@ -31,6 +31,9 @@ export class PouchORM {
 
   static adapter: string;
 
+  /**
+    Prepares the given collection for the given database.
+  */
   static ensureDatabase(dbName: string, pouchCollection: PouchCollection<any>, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
 
     // ensure the database exists
@@ -81,32 +84,39 @@ export class PouchORM {
     });
   }
 
+  /**
+  If there is no change listener for the DB, start one.
+  This will make it so all related collections get informed when the db changes.
+  */
   static beginChangeListener(dbName: string) {
-    // If there is no change listener for the DB, start one.
-    // This will make it so all related collections get informed when the db changes.
     if (!PouchORM.databases[dbName].changeListener) {
       PouchORM.databases[dbName].changeListener = PouchORM.createChangeListener(dbName);
     }
   }
 
-  // public
+  /**
+   Stop user oplog handlers for the database
+  */
   public static stopChangeListener(dbName: string) {
     PouchORM.databases[dbName].changeListener?.cancel()
     PouchORM.databases[dbName].changeListener = undefined
   }
 
+  /**
+   PouchORM can help you do some basic audit logging by passing in a userId to attach to all changes that originate from this instance.
+  */
   public static setUser(userId: string) {
     PouchORM.userId = userId;
   }
 
   /**
-   * A map of active sync operations
+   * A map of active sync operations between databases
    * from -> to -> SyncOp reference
    */
   public static activeSyncOperations: Record<string, Record<string, Sync<IModel>>> = {};
 
   /**
-   * start Synchronizing between 2 files/urls.
+   * start Synchronizing between 2 Databases. Can be files or urls to remote databases.
    */
   static startSync(fromDB: string, toDB: string, options: ORMSyncOptions = {}) {
 
@@ -138,10 +148,10 @@ export class PouchORM {
         // replication was paused, usually because of a lost connection
         options.onPaused?.(info);
       })
-      // .on('active', function (info) {
-      //   // replication was resumed
-      //   options.onActive?.(info);
-      // })
+      .on('active', function (info) {
+        // replication was resumed
+        options.onActive?.(info);
+      })
       .on('error', function (err) {
         // totally unhandled error (shouldn't happen)
         options.onError?.(err);
