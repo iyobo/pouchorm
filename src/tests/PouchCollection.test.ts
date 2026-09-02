@@ -2,9 +2,10 @@
 
 import { Account, AccountCollection, Person, PersonCollection } from './util/TestClasses';
 import { ValidationError } from 'class-validator';
-import { ClassValidate } from '../types';
+import { ClassValidate, CollectionState } from '../types';
 import { UpsertHelper } from '../helpers';
 import { PouchORM } from '../PouchORM';
+import { PouchCollection } from '../PouchCollection';
 import { makePerson, waitFor } from './util/testHelpers';
 
 const dbName = 'unit_test';
@@ -17,6 +18,68 @@ describe('PouchCollection Instance', () => {
   afterEach(async () => {
     jest.clearAllMocks();
     jest.resetAllMocks();
+  });
+
+  afterAll(async () => {
+    await PouchORM.deleteDatabase(dbName);
+  });
+
+  describe('initialization', () => {
+    it('waits for one shared initialization before concurrent operations continue', async () => {
+      let releaseInitialization: () => void;
+      const initializationGate = new Promise<void>(resolve => {
+        releaseInitialization = resolve;
+      });
+
+      class SlowPersonCollection extends PouchCollection<Person> {
+        async beforeInit(): Promise<void> {
+          await initializationGate;
+        }
+      }
+
+      const slowDbName = 'unit_test_slow_init';
+      const slowCollection = new SlowPersonCollection(slowDbName);
+      const firstFind = slowCollection.find({});
+
+      await waitFor(10);
+      expect(slowCollection._state).toBe(CollectionState.LOADING);
+
+      let secondFindFinished = false;
+      const secondFind = slowCollection.find({}).then(result => {
+        secondFindFinished = true;
+        return result;
+      });
+
+      await waitFor(10);
+      expect(secondFindFinished).toBe(false);
+
+      releaseInitialization();
+      await Promise.all([firstFind, secondFind]);
+      expect(slowCollection._state).toBe(CollectionState.READY);
+
+      await PouchORM.deleteDatabase(slowDbName);
+    });
+
+    it('can retry after initialization fails', async () => {
+      let attempts = 0;
+
+      class FlakyPersonCollection extends PouchCollection<Person> {
+        async beforeInit(): Promise<void> {
+          attempts += 1;
+          if (attempts === 1) throw new Error('Temporary initialization failure');
+        }
+      }
+
+      const flakyDbName = 'unit_test_flaky_init';
+      const flakyCollection = new FlakyPersonCollection(flakyDbName);
+
+      await expect(flakyCollection.find({})).rejects.toThrow('Temporary initialization failure');
+      expect(flakyCollection._state).toBe(CollectionState.NEW);
+      await expect(flakyCollection.find({})).resolves.toEqual([]);
+      expect(flakyCollection._state).toBe(CollectionState.READY);
+
+      await PouchORM.deleteDatabase(flakyDbName);
+    });
   });
 
   describe('upsert', () => {
@@ -143,6 +206,13 @@ describe('PouchCollection Instance', () => {
       expect(personCollection._indexes[3]?.fields?.length).toBe(2);
       expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
       expect(personCollection._indexes[3]?.fields?.includes('$collectionType')).toBe(true);
+    });
+
+    it('does not mutate the supplied field list', async () => {
+      const fields: (keyof Person)[] = ['name'];
+      await personCollection.addIndex(fields, 'testIndex');
+
+      expect(fields).toEqual(['name']);
     });
   });
 
@@ -297,6 +367,13 @@ describe('PouchCollection Instance', () => {
 
           const accounts = await accountCollection.find({age: 102});
           expect(accounts).toHaveLength(2);
+        });
+        it('does not mutate the supplied selector', async () => {
+          const selector: Partial<Person> = {name: 'Kingsley'};
+
+          await personCollection.find(selector);
+
+          expect(selector).toEqual({name: 'Kingsley'});
         });
       });
 
