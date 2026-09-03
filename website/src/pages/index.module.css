@@ -1,0 +1,207 @@
+.hero {
+  background:
+    radial-gradient(
+      circle at 85% 20%,
+      rgba(15, 118, 110, 0.14),
+      transparent 32rem
+    ),
+    linear-gradient(
+      180deg,
+      var(--pouchorm-hero-start),
+      var(--pouchorm-hero-end)
+    );
+  border-bottom: 1px solid var(--pouchorm-border);
+  padding: 5.5rem 0;
+}
+
+.heroGrid {
+  align-items: center;
+  display: grid;
+  gap: 4rem;
+  grid-template-columns: minmax(0, 1fr) minmax(28rem, 0.9fr);
+}
+
+.heroCopy h1 {
+  font-size: clamp(2.75rem, 6vw, 4.8rem);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  margin: 1rem 0 1.5rem;
+  max-width: 11ch;
+}
+
+.heroCopy p {
+  color: var(--pouchorm-muted);
+  font-size: 1.2rem;
+  line-height: 1.7;
+  max-width: 43rem;
+}
+
+.versionBadge,
+.eyebrow {
+  color: var(--pouchorm-accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 2rem;
+}
+
+.actions :global(.button),
+.migrationCard :global(.button) {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.codePanel {
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
+  color: #dbeafe;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.codeHeader {
+  align-items: center;
+  background: #0b1220;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+  display: flex;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.78rem;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+}
+
+.codePanel pre {
+  background: transparent;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1.4rem;
+}
+
+.capabilities {
+  padding: 5rem 0;
+}
+
+.capabilities > div > h2 {
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.03em;
+  margin-bottom: 2.25rem;
+  max-width: 18ch;
+}
+
+.capabilityGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.capabilityCard {
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--pouchorm-border);
+  border-radius: 12px;
+  min-height: 13.5rem;
+  padding: 1.6rem;
+}
+
+.capabilityCard h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.8rem;
+}
+
+.capabilityCard p,
+.migrationCard p {
+  color: var(--pouchorm-muted);
+  line-height: 1.7;
+  margin-bottom: 0;
+}
+
+.migrationSection {
+  padding: 0 0 5rem;
+}
+
+.migrationCard {
+  align-items: center;
+  background: var(--pouchorm-callout);
+  border: 1px solid var(--pouchorm-border);
+  border-radius: 16px;
+  display: flex;
+  gap: 2rem;
+  justify-content: space-between;
+  padding: 2.25rem;
+}
+
+.migrationCard h2 {
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -0.025em;
+  margin: 0.45rem 0 0.6rem;
+}
+
+@media (max-width: 996px) {
+  .hero {
+    padding: 4rem 0;
+  }
+
+  .heroGrid {
+    gap: 2.5rem;
+    grid-template-columns: 1fr;
+  }
+
+  .heroCopy h1 {
+    max-width: 13ch;
+  }
+
+  .capabilityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .capabilityCard {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 576px) {
+  .hero {
+    padding: 3rem 0;
+  }
+
+  .actions {
+    display: grid;
+  }
+
+  .codePanel pre {
+    font-size: 0.76rem;
+    padding: 1rem;
+  }
+
+  .capabilities {
+    padding: 3.5rem 0;
+  }
+
+  .migrationCard {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero *,
+  .capabilities *,
+  .migrationSection * {
+    scroll-behavior: auto;
+    transition: none !important;
+  }
+}

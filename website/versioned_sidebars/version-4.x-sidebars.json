@@ -1,0 +1,9 @@
+{
+  "guidesSidebar": [
+    "intro",
+    "getting-started",
+    "api-reference",
+    "validation",
+    "synchronization"
+  ]
+}

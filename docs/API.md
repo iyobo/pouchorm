@@ -1,4 +1,12 @@
-# PouchORM API reference
+---
+id: api-reference
+title: API reference
+sidebar_label: API reference
+hide_title: true
+description: Public classes, methods, options, and return types in PouchORM 5.
+---
+
+# API reference
 
 This reference describes the public PouchORM 5 exports.
 

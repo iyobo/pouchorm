@@ -1,0 +1,35 @@
+{
+  "name": "pouchorm-documentation",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "docusaurus start",
+    "build": "npm run audit && npm run check && docusaurus build",
+    "audit": "node scripts/audit-dependencies.mjs",
+    "check": "node scripts/check-docs.mjs && tsc -p examples/tsconfig.json --noEmit",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
+    "@mdx-js/react": "^3.1.1",
+    "clsx": "^2.1.1",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.10.2",
+    "@docusaurus/types": "^3.10.2",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "overrides": {
+    "qs": "6.16.0",
+    "serialize-javascript": "7.0.5",
+    "uuid": "11.1.1"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "lib": ["ES2020", "DOM"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "paths": {
+      "pouchorm": ["dist/index"]
+    },
+    "skipLibCheck": false,
+    "strict": true,
+    "target": "ES2020",
+    "types": []
+  },
+  "include": ["quick-start.ts"]
+}

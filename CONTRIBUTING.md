@@ -34,7 +34,7 @@ Most tests use the in-memory PouchDB adapter. Give new tests unique database nam
 
 - Keep each pull request focused and explain the observable behavior it changes.
 - Add a regression test for a bug fix and tests for new behavior.
-- Update the README or API reference when public behavior changes.
+- Update the documentation site and API reference when public behavior changes.
 - Avoid committing generated `dist`, local database files, coverage output, or dependency directories.
 - Call out compatibility or migration concerns in the pull request description.
 
@@ -45,8 +45,10 @@ Most tests use the in-memory PouchDB adapter. Give new tests unique database nam
 - `src/types.ts` contains public model types and enums.
 - `src/tests` contains the Jest test suite.
 - `scripts/test-package.mjs` verifies the package from a clean consumer's point of view.
-- `docs/API.md` is the public API reference.
-- `MIGRATING_TO_V5.md` records breaking changes and their migration steps.
+- `docs/` contains the current major-version guides and API reference.
+- `website/versioned_docs/` contains frozen documentation for older major versions.
+- `MIGRATING_TO_V5.md` and `docs/migrating-to-v5.md` contain the same migration guide; the documentation build checks them for drift.
+- `website/` contains the Docusaurus application and its compiled example checks.
 
 ## Reporting bugs
 
