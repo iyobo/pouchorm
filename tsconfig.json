@@ -2,20 +2,19 @@
   "compilerOptions": {
     "target": "es2018",
     "module": "commonjs",
-    "lib": [
-      "es6",
-      "dom"
-    ],
-    "declaration": true,                   
+    "lib": ["es2018", "dom"],
+    "declaration": true,
     "sourceMap": true,
     "outDir": "dist",
     "moduleResolution": "node",
-    "baseUrl": ".",
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": true,
+    "strict": true,
+    "skipLibCheck": false
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/sandbox", "src/tests"]
 }

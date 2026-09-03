@@ -1,234 +1,366 @@
-import { PouchCollection } from './PouchCollection';
-import { ClassValidate, IModel, Sync } from './types';
-import ClassValidator from 'class-validator';
-import { getPouchDBWithPlugins } from './helpers';
+import { getPouchDBWithPlugins } from "./helpers";
+import { PouchCollection } from "./PouchCollection";
+import {
+  ClassValidator,
+  ClassValidate,
+  IModel,
+  PouchBulkResult,
+  PouchChanges,
+  PouchDatabase,
+  PouchDatabaseConfiguration,
+  PouchDBConstructor,
+  PouchSyncOptions,
+  Sync,
+  SyncResult,
+} from "./types";
 
-const PouchDB = getPouchDBWithPlugins();
+interface DatabaseRegistration {
+  db: PouchDatabase<IModel>;
+  changeListener?: PouchChanges<IModel>;
+  collections: Set<PouchCollection<any>>;
+}
 
-export type ORMSyncOptions = {
-  opts?: PouchDB.Replication.SyncOptions,
-  onChange?: (change: PouchDB.Replication.SyncResult<IModel>) => unknown
-  onPaused?: (info: unknown) => unknown
-  onError?: (error: unknown) => unknown
-};
+export interface ORMSyncOptions<Model extends object = IModel> {
+  options?: PouchSyncOptions;
+  onChange?: (change: SyncResult<Model>) => unknown;
+  onPaused?: (info: unknown) => unknown;
+  onActive?: () => unknown;
+  onDenied?: (error: unknown) => unknown;
+  onComplete?: (info: unknown) => unknown;
+  onError?: (error: unknown) => unknown;
+}
 
 export class PouchORM {
-  private static databases: Record<string, {
-    db: PouchDB.Database,
-    changeListener?: PouchDB.Core.Changes<any>,
-    collectionInstances: Set<PouchCollection<any>>
-  }> = {};
+  private static readonly databases = new Map<string, DatabaseRegistration>();
+  private static readonly syncOperations = new Map<
+    string,
+    Map<string, Sync<IModel>>
+  >();
+  private static classValidator?: ClassValidator;
+
   static LOGGING = false;
   static VALIDATE = ClassValidate.OFF;
-  static ClassValidator: typeof ClassValidator;
-  static PouchDB = PouchDB;
+  static PouchDB: PouchDBConstructor = getPouchDBWithPlugins();
+  static userId?: string;
+  static adapter?: string;
 
   /**
-   * Set this to enable user change logging with this id for each upsert
+   * Use a custom PouchDB constructor. Call this before opening a database.
+   * PouchORM installs the find plugin on the supplied constructor.
    */
-  static userId: string;
-
-  static adapter: string;
-
-  /**
-    Prepares the given collection for the given database.
-  */
-  static ensureDatabase(dbName: string, pouchCollection: PouchCollection<any>, opts?: PouchDB.Configuration.DatabaseConfiguration): PouchDB.Database {
-
-    // ensure the database exists
-    if (!PouchORM.databases[dbName]) {
-      if (PouchORM.LOGGING) console.log('PouchORM Registering DB: ', dbName);
-
-      // Creates or loads the DB
-      const db = new PouchDB(dbName, {adapter: PouchORM.adapter, ...opts});
-      PouchORM.databases[dbName] = {db, changeListener: undefined, collectionInstances: new Set()};
+  static usePouchDB(pouchDB: PouchDBConstructor): void {
+    if (PouchORM.databases.size > 0) {
+      throw new Error(
+        "A custom PouchDB constructor must be configured before opening a database.",
+      );
     }
-
-    // Ensure the asking collection is related to this DB
-    PouchORM.databases[dbName].collectionInstances.add(pouchCollection);
-
-    // If there is no change listener for the DB, start one.
-    // This will make it so all related collections get informed when the db changes.
-    PouchORM.beginChangeListener(dbName)
-
-    return PouchORM.databases[dbName].db;
+    if (!pouchDB || typeof pouchDB.plugin !== "function") {
+      throw new Error(
+        "The supplied PouchDB constructor does not support plugins.",
+      );
+    }
+    PouchORM.PouchDB = getPouchDBWithPlugins(pouchDB);
   }
 
-  private static createChangeListener(dbName: string) {
-    const db = PouchORM.databases[dbName].db;
-    if (!db) throw new Error(`Cannot create changeListener for non-existent DB: '${dbName}'`);
+  static useClassValidator(classValidator: ClassValidator): void {
+    if (
+      !classValidator ||
+      typeof classValidator.validate !== "function" ||
+      typeof classValidator.validateOrReject !== "function"
+    ) {
+      throw new Error(
+        "The supplied validator must provide validate and validateOrReject functions.",
+      );
+    }
+    PouchORM.classValidator = classValidator;
+  }
 
-    return db.changes<IModel>({
-      live: true,
-      since: 'now',
-      include_docs: true,
-    }).on('change', function (change) {
+  static openDatabase(
+    databaseName: string,
+    options?: PouchDatabaseConfiguration,
+  ): PouchDatabase<IModel> {
+    if (!databaseName || databaseName.trim() === "") {
+      throw new Error("PouchORM requires a non-empty database name.");
+    }
 
-      PouchORM.databases[dbName].collectionInstances.forEach(collectionInstance => {
-        if(!collectionInstance || change.doc.$collectionType !== collectionInstance.collectionTypeName) return
-
-        if (change.deleted) {
-          void collectionInstance.onChangeDeleted(change.doc);
-        } else {
-          void collectionInstance.onChangeUpserted(change.doc);
-        }
+    if (!PouchORM.databases.has(databaseName)) {
+      const db = new PouchORM.PouchDB(databaseName, {
+        ...(PouchORM.adapter ? { adapter: PouchORM.adapter } : {}),
+        ...options,
       });
 
-    }).on('error', function (error) {
-      console.error(`Change listener error for db "${dbName}"`, error);
+      PouchORM.databases.set(databaseName, {
+        db,
+        collections: new Set(),
+      });
+      PouchORM.beginChangeListener(databaseName);
+    }
 
-      PouchORM.databases[dbName].collectionInstances.forEach(collectionInstance => {
-        void collectionInstance.onChangeError(error);
+    return PouchORM.databases.get(databaseName)!.db;
+  }
+
+  static ensureDatabase<Model extends IModel>(
+    databaseName: string,
+    collection: PouchCollection<Model>,
+    options?: PouchDatabaseConfiguration,
+  ): PouchDatabase<Model> {
+    const database = PouchORM.openDatabase(databaseName, options);
+    PouchORM.databases.get(databaseName)!.collections.add(collection);
+    return database as PouchDatabase<Model>;
+  }
+
+  private static createChangeListener(
+    databaseName: string,
+  ): PouchChanges<IModel> {
+    const registration = PouchORM.databases.get(databaseName);
+    if (!registration) {
+      throw new Error(
+        `Cannot listen to a database that has not been opened: ${databaseName}`,
+      );
+    }
+
+    const listener = registration.db.changes<IModel>({
+      live: true,
+      since: "now",
+      include_docs: true,
+    });
+
+    listener.on("change", (change) => {
+      const document = change.doc;
+      if (!document) return;
+
+      registration.collections.forEach((collection) => {
+        if (document.$collectionType !== collection.collectionName) return;
+        void Promise.resolve()
+          .then(() => {
+            return change.deleted
+              ? collection.onChangeDeleted(document)
+              : collection.onChangeUpserted(document);
+          })
+          .catch((error) => {
+            PouchORM.reportCollectionError(collection, error);
+          });
       });
     });
+    listener.on("error", (error) => {
+      if (registration.changeListener === listener) {
+        registration.changeListener = undefined;
+      }
+      registration.collections.forEach((collection) => {
+        PouchORM.reportCollectionError(collection, error);
+      });
+    });
+
+    return listener;
   }
 
-  /**
-  If there is no change listener for the DB, start one.
-  This will make it so all related collections get informed when the db changes.
-  */
-  static beginChangeListener(dbName: string) {
-    if (!PouchORM.databases[dbName].changeListener) {
-      PouchORM.databases[dbName].changeListener = PouchORM.createChangeListener(dbName);
+  private static reportCollectionError(
+    collection: PouchCollection<any>,
+    error: unknown,
+  ): void {
+    const normalized =
+      error instanceof Error ? error : new Error(String(error));
+    void Promise.resolve()
+      .then(() => collection.onChangeError(normalized))
+      .catch(() => {
+        if (PouchORM.LOGGING) {
+          console.error(
+            `The error handler for collection ${collection.collectionName} failed.`,
+          );
+        }
+      });
+  }
+
+  static beginChangeListener(databaseName: string): void {
+    const registration = PouchORM.databases.get(databaseName);
+    if (!registration) {
+      throw new Error(
+        `Cannot listen to a database that has not been opened: ${databaseName}`,
+      );
+    }
+    if (!registration.changeListener) {
+      registration.changeListener = PouchORM.createChangeListener(databaseName);
     }
   }
 
-  /**
-   Stop user oplog handlers for the database
-  */
-  public static stopChangeListener(dbName: string) {
-    const dbSet = PouchORM.databases[dbName];
-    if (!dbSet) return;
-
-    dbSet.changeListener?.cancel()
-    dbSet.changeListener = undefined
+  static stopChangeListener(databaseName: string): boolean {
+    const registration = PouchORM.databases.get(databaseName);
+    if (!registration?.changeListener) return false;
+    registration.changeListener.cancel();
+    registration.changeListener = undefined;
+    return true;
   }
 
-  /**
-   PouchORM can help you do some basic audit logging by passing in a userId to attach to all changes that originate from this instance.
-  */
-  public static setUser(userId: string) {
+  static setUser(userId?: string): void {
     PouchORM.userId = userId;
   }
 
-  /**
-   * A map of active sync operations between databases
-   * from -> to -> SyncOp reference
-   */
-  public static activeSyncOperations: Record<string, Record<string, Sync<IModel>>> = {};
-
-  /**
-   * start Synchronizing between 2 Databases. Can be files or urls to remote databases.
-   */
-  static startSync(fromDB: string, toDB: string, options: ORMSyncOptions = {}) {
-
-    PouchORM.activeSyncOperations[fromDB] = PouchORM.activeSyncOperations[fromDB] || {};
-    if (PouchORM.activeSyncOperations[fromDB][toDB]) {
-      // stop any previous syncs of same names/paths
-      PouchORM.activeSyncOperations[fromDB][toDB].cancel();
-    }
-
-    const localDb = PouchORM.databases[fromDB]?.db;
-    if (!localDb) throw new Error(`sourceDB does not exist: ${fromDB}`);
-
-    const remoteDB = new PouchDB(toDB);
-
-    const realOps = {
-      live: true,
-      retry: true,
-      ...options.opts || {}
-    };
-
-    // create new sync operation
-    const syncOperation = localDb.sync(remoteDB, realOps)
-      .on('change', function (change: PouchDB.Replication.SyncResult<IModel>) {
-        // yo, something changed!
-        if (PouchORM.LOGGING) console.log('PouchORM Pulled new change: ', change);
-        options.onChange?.(change);
-      })
-      .on('paused', function (info) {
-        // replication was paused, usually because of a lost connection
-        options.onPaused?.(info);
-      })
-      .on('error', function (err) {
-        // totally unhandled error (shouldn't happen)
-        options.onError?.(err);
-      });
-
-    // register new sync operation
-    PouchORM.activeSyncOperations[fromDB][toDB] = syncOperation;
+  static getActiveSync<Model extends object = IModel>(
+    fromDatabase: string,
+    toDatabase: string,
+  ): Sync<Model> | undefined {
+    return PouchORM.syncOperations.get(fromDatabase)?.get(toDatabase) as
+      Sync<Model> | undefined;
   }
 
-  /**
-   * Stop one or all sync operations from a db by name.
-   * @param fromDB
-   * @param toDB - if no destination DB specified, stop all sync ops for DB.
-   */
-  static stopSync(fromDB: string, toDB?: string) {
-    if (toDB) {
-      // close connection to that db
-      PouchORM.activeSyncOperations[fromDB]?.[toDB]?.cancel();
-    } else {
-      // close all connections
-      Object.values(PouchORM.activeSyncOperations[fromDB] || {}).forEach(it => it.cancel());
-    }
-  }
-
-  /**
-   * deletes everything in a database
-   * @param dbName
-   */
-  static async clearDatabase(dbName: string) {
-
-    const db = PouchORM.databases[dbName]?.db;
-    if (!db) throw new Error(`Database does not exist: ${dbName}`);
-
-    const result = await db.allDocs();
-    const deletedDocs = result.rows.map(row => {
-      return {_id: row.id, _rev: row.value.rev, _deleted: true};
-    });
-    return await db.bulkDocs(deletedDocs);
-
-    // Leave as comment for debug
-    // return Promise.all(result.rows.map(function (row) {
-    //   return db.remove(row.id, row.value.rev);
-    // }));
-  }
-
-  static async deleteDatabase(dbName: string) {
-
-    const dbSet = PouchORM.databases[dbName];
-    if (!dbSet) throw new Error(`Database does not exist: ${dbName}`);
-
-    // First stop DB change listener
-    dbSet.changeListener?.cancel();
-
-    // then stop any active syncs (be it remote or local)
-    if (PouchORM.activeSyncOperations[dbName]) {
-      const syncs = Object.values(PouchORM.activeSyncOperations[dbName]);
-      syncs.forEach(it => it.cancel());
-      delete PouchORM.activeSyncOperations[dbName];
-    }
-
-    // then destroy the DB
-    const res = await dbSet.db.destroy();
-
-    // lastly, unregister db from PouchORM
-    delete PouchORM.databases[dbName];
-
-    return res;
-  }
-
-  static getClassValidator() {
-    let classValidator: typeof ClassValidator;
+  private static invokeCallback<T>(
+    callback: ((value: T) => unknown) | undefined,
+    value: T,
+    onError?: (error: unknown) => unknown,
+  ): void {
+    if (!callback) return;
 
     try {
-      classValidator = require('class-validator');
+      void Promise.resolve(callback(value)).catch((error) => {
+        if (onError && callback !== onError)
+          PouchORM.invokeCallback(onError, error);
+      });
     } catch (error) {
-      console.log('Error initializing validator: ', error);
+      if (onError && callback !== onError)
+        PouchORM.invokeCallback(onError, error);
     }
-
-    return PouchORM.ClassValidator = classValidator;
   }
 
+  private static unregisterSync(
+    fromDatabase: string,
+    toDatabase: string,
+    operation: Sync<IModel>,
+  ): void {
+    const operations = PouchORM.syncOperations.get(fromDatabase);
+    if (operations?.get(toDatabase) !== operation) return;
+    operations.delete(toDatabase);
+    if (operations.size === 0) PouchORM.syncOperations.delete(fromDatabase);
+  }
+
+  static startSync<Model extends IModel = IModel>(
+    fromDatabase: string,
+    toDatabase: string,
+    configuration: ORMSyncOptions<Model> = {},
+  ): Sync<Model> {
+    PouchORM.stopSync(fromDatabase, toDatabase);
+
+    const localDatabase = PouchORM.openDatabase(fromDatabase);
+    const isRemoteDatabase = /^https?:\/\//i.test(toDatabase);
+    const remoteDatabase = isRemoteDatabase
+      ? toDatabase
+      : (PouchORM.openDatabase(toDatabase) as PouchDatabase<Model>);
+    const syncOptions = {
+      live: true,
+      retry: true,
+      ...configuration.options,
+    };
+
+    const operation = localDatabase.sync<Model>(remoteDatabase, syncOptions);
+    const registeredOperation = operation as unknown as Sync<IModel>;
+    const operations = PouchORM.syncOperations.get(fromDatabase) ?? new Map();
+    operations.set(toDatabase, registeredOperation);
+    PouchORM.syncOperations.set(fromDatabase, operations);
+
+    operation
+      .on("change", (change) => {
+        PouchORM.invokeCallback(
+          configuration.onChange,
+          change,
+          configuration.onError,
+        );
+      })
+      .on("paused", (info) => {
+        PouchORM.invokeCallback(
+          configuration.onPaused,
+          info,
+          configuration.onError,
+        );
+      })
+      .on("active", () => {
+        PouchORM.invokeCallback(
+          configuration.onActive,
+          undefined,
+          configuration.onError,
+        );
+      })
+      .on("denied", (error) => {
+        PouchORM.invokeCallback(
+          configuration.onDenied,
+          error,
+          configuration.onError,
+        );
+      })
+      .on("complete", (info) => {
+        PouchORM.unregisterSync(fromDatabase, toDatabase, registeredOperation);
+        PouchORM.invokeCallback(
+          configuration.onComplete,
+          info,
+          configuration.onError,
+        );
+      })
+      .on("error", (error) => {
+        PouchORM.unregisterSync(fromDatabase, toDatabase, registeredOperation);
+        PouchORM.invokeCallback(configuration.onError, error);
+      });
+
+    return operation;
+  }
+
+  static stopSync(fromDatabase: string, toDatabase?: string): number {
+    const operations = PouchORM.syncOperations.get(fromDatabase);
+    if (!operations) return 0;
+
+    if (toDatabase) {
+      const operation = operations.get(toDatabase);
+      if (!operation) return 0;
+      operation.cancel();
+      PouchORM.unregisterSync(fromDatabase, toDatabase, operation);
+      return 1;
+    }
+
+    const destinations = [...operations.keys()];
+    destinations.forEach((destination) => {
+      const operation = operations.get(destination)!;
+      operation.cancel();
+      PouchORM.unregisterSync(fromDatabase, destination, operation);
+    });
+    return destinations.length;
+  }
+
+  static async clearDatabase(databaseName: string): Promise<PouchBulkResult[]> {
+    const database = PouchORM.databases.get(databaseName)?.db;
+    if (!database) throw new Error(`Database does not exist: ${databaseName}`);
+
+    const result = await database.allDocs();
+    return database.bulkDocs(
+      result.rows
+        .filter(
+          (row) =>
+            !row.id.startsWith("_design/") && !row.id.startsWith("_local/"),
+        )
+        .map((row) => ({
+          _id: row.id,
+          _rev: row.value.rev,
+          _deleted: true,
+        })),
+    );
+  }
+
+  static async deleteDatabase(databaseName: string): Promise<void> {
+    const registration = PouchORM.databases.get(databaseName);
+    if (!registration)
+      throw new Error(`Database does not exist: ${databaseName}`);
+
+    PouchORM.stopChangeListener(databaseName);
+    PouchORM.stopSync(databaseName);
+
+    [...PouchORM.syncOperations.keys()].forEach((source) => {
+      PouchORM.stopSync(source, databaseName);
+    });
+
+    await registration.db.destroy();
+    PouchORM.databases.delete(databaseName);
+  }
+
+  static getClassValidator(): ClassValidator {
+    if (PouchORM.classValidator) return PouchORM.classValidator;
+    throw new Error(
+      "Validation is enabled, but no validator is configured. Install class-validator and pass it to PouchORM.useClassValidator, or disable validation.",
+    );
+  }
 }

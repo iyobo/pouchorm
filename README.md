@@ -4,44 +4,29 @@
 [![npm](https://img.shields.io/npm/v/pouchorm.svg)](https://www.npmjs.com/package/pouchorm)
 [![license](https://img.shields.io/npm/l/pouchorm.svg)](LICENSE)
 
-A clearer way to work with PouchDB documents in TypeScript. PouchORM provides typed models, collection-style queries, optional validation, change notifications, and database syncing.
-
-PouchDB stores documents in databases rather than tables. PouchORM stores the collection name with each document, so different types of model can share one database.
-
-## Features
-
-- Typed models and custom string ID types
-- Multiple collections in one PouchDB database
-- Indexes created when a collection is first used
-- Methods to create, query, update, and delete documents
-- Optional validation through [`class-validator`](https://github.com/typestack/class-validator)
-- Run your own code when documents change
-- Local and remote database syncing
-- Direct PouchDB access when you need it
+PouchORM adds typed models and collections to PouchDB. You can keep several collections in one database, query them with Mango selectors, validate class models, respond to changes, and synchronize databases.
 
 ## Installation
 
-```sh
-npm install pouchorm
-```
-
-With Yarn:
+Install PouchORM and its PouchDB peer dependency:
 
 ```sh
-yarn add pouchorm
+npm install pouchorm pouchdb
 ```
 
-Install `class-validator` when you enable class validation:
+Install `class-validator` only when you use validation:
 
 ```sh
 npm install class-validator
 ```
 
-PouchORM 4 uses PouchDB 9 and is published as a CommonJS package with TypeScript declarations.
+PouchORM 5 requires Node.js 20 or newer when used in Node. It is published as CommonJS with TypeScript declarations.
+
+Upgrading from PouchORM 4? Read [Migrating to PouchORM 5](MIGRATING_TO_V5.md).
 
 ## Quick start
 
-Define a model and a collection. Index every field you plan to sort by or query frequently.
+Define a model and give its collection a stable name. That name is stored with every document, so it must not depend on a JavaScript class name that a production build can change.
 
 ```ts
 import { IModel, PouchCollection } from "pouchorm";
@@ -52,15 +37,19 @@ interface Person extends IModel {
 }
 
 class People extends PouchCollection<Person> {
+  constructor(database = "app-data") {
+    super({ database, collection: "people" });
+  }
+
   async beforeInit(): Promise<void> {
     await this.addIndex(["age"], "people-by-age");
   }
 }
 
-export const people = new People("app-data");
+const people = new People();
 ```
 
-PouchORM creates a collection's indexes the first time you use it. There is no separate setup step.
+Create, find, update, and remove documents:
 
 ```ts
 const ada = await people.upsert({
@@ -68,33 +57,40 @@ const ada = await people.upsert({
   age: 36,
 });
 
-const adults = await people.find({ age: { $gte: 18 } }, { sort: ["age"] });
+const adults = await people.find(
+  { age: { $gte: 18 } },
+  { sort: [{ age: "desc" }] },
+);
 
-ada.age = 37;
-const updatedAda = await people.upsert(ada);
-
+const updatedAda = await people.upsert({ ...ada, age: 37 });
 await people.remove(updatedAda);
 ```
 
-`upsert` returns the saved document. The result includes its ID (`_id`), current revision (`_rev`), and the fields PouchORM uses to track its collection and last update.
+`upsert` returns the saved document, including `_id`, `_rev`, `$timestamp`, `$collectionType`, and `$by`.
 
 ## Collections and databases
 
-Pass the same database name to collections that should share one PouchDB database:
+The constructor options are:
 
 ```ts
-const people = new People("app-data");
-const projects = new Projects("app-data");
-const archivedPeople = new People("archive-data");
+super({
+  database: "app-data",
+  collection: "people",
+  pouch: { adapter: "idb" },
+  validate: ClassValidate.INHERIT,
+});
 ```
 
-PouchORM opens each database once. If several collections use the same database name, only the PouchDB options passed to the first collection are used.
+- `database` selects the PouchDB database.
+- `collection` is the stable name stored in `$collectionType`.
+- `pouch` is passed to PouchDB when the database is first opened.
+- `validate` controls validation for this collection.
 
-PouchORM uses the collection's class name to decide which documents belong to it. If you rename a collection class, previously saved documents keep the old name and no longer appear in that collection. Plan a data migration before renaming one.
+Collections with the same `database` value share one PouchDB database. Each collection needs a different `collection` value. Only the first set of PouchDB options is used when several collections open the same database.
 
 ## Updating documents
 
-The default update behavior replaces the stored document with the object you pass while preserving the current `_rev`. Use `UpsertHelper(...).merge` when you want to merge fields instead:
+An update replaces the stored fields while retaining the latest `_rev`. To preserve fields that are not in your update, use `UpsertHelper(...).merge`:
 
 ```ts
 import { UpsertHelper } from "pouchorm";
@@ -108,38 +104,70 @@ const patch: Person = {
 const merged = await people.upsert(patch, UpsertHelper(patch).merge);
 ```
 
-## Class models and validation
+If another writer changes the document between the read and write, PouchORM reads the latest revision and tries again. After five conflicts, it returns the PouchDB conflict error.
 
-Extend `PouchModel` when you want class instances, decorator-based validation, or both:
+`findOne` and `findById` return `null` when no matching document exists. Their `OrFail` variants throw instead.
+
+## Bulk writes
+
+`bulkUpsert` applies the same ID generation, validation, update, and conflict handling as `upsert`, then returns the saved documents:
 
 ```ts
+const saved = await people.bulkUpsert([
+  { name: "Grace Hopper", age: 85 },
+  { name: "Evelyn Boyd Granville", age: 99 },
+]);
+```
+
+`bulkRemove` deletes an array of saved documents and returns the PouchDB result for each document. It does not change the objects you pass to it.
+
+## Class models and validation
+
+Extend `PouchModel` when you use `class-validator` decorators:
+
+```ts
+import * as classValidator from "class-validator";
 import { IsInt, IsString, Min } from "class-validator";
-import { ClassValidate, PouchCollection, PouchModel } from "pouchorm";
+import { ClassValidate, PouchCollection, PouchModel, PouchORM } from "pouchorm";
+
+PouchORM.useClassValidator(classValidator);
 
 class Person extends PouchModel<Person> {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsInt()
   @Min(0)
-  age: number;
+  age!: number;
 }
 
-class People extends PouchCollection<Person> {}
+class People extends PouchCollection<Person> {
+  constructor() {
+    super({
+      database: "app-data",
+      collection: "people",
+      validate: ClassValidate.ON_AND_REJECT,
+    });
+  }
+}
 
-const people = new People("app-data", undefined, ClassValidate.ON_AND_REJECT);
-
-await people.upsert(new Person({ name: "Ada", age: 36 }));
+await new People().upsert(new Person({ name: "Ada", age: 36 }));
 ```
 
-Validation runs on `upsert`, not `bulkUpsert`. Pass a class instance such as `new Person(...)` when using decorators; a plain object does not include the information those decorators need.
+Validation applies to both `upsert` and `bulkUpsert`. A collection set to `ClassValidate.OFF` remains unvalidated even when global validation is enabled. Use `ClassValidate.INHERIT` to follow `PouchORM.VALIDATE`.
+
+PouchORM reports a clear error if validation is enabled before a validator is configured.
 
 ## Responding to changes
 
-Override these methods to run code when a document in the collection is saved or deleted:
+Override the hooks you need:
 
 ```ts
 class People extends PouchCollection<Person> {
+  constructor() {
+    super({ database: "app-data", collection: "people" });
+  }
+
   async onChangeUpserted(person: Person): Promise<void> {
     console.log("Changed:", person._id);
   }
@@ -149,109 +177,108 @@ class People extends PouchCollection<Person> {
   }
 
   async onChangeError(error: Error): Promise<void> {
-    console.error("Changes feed failed:", error);
+    console.error("Change handler failed:", error);
   }
 }
 ```
 
-Saving or deleting a document can finish before its hook finishes. Catch and handle errors inside each hook.
+The database operation can finish before its hook finishes. If an upsert or delete hook rejects, PouchORM passes that error to `onChangeError`.
 
-## Syncing databases
+## Synchronizing databases
 
-Create at least one collection for the first database before calling `startSync`. The second database can be another local database or a remote CouchDB-compatible URL.
+`startSync` returns the PouchDB synchronization handle. The source database is opened automatically if needed.
 
 ```ts
 import { PouchORM } from "pouchorm";
 
-const people = new People("local-data");
+const operation = PouchORM.startSync(
+  "local-data",
+  "https://example.com/app-data",
+  {
+    options: { batch_size: 100 },
+    onChange(change) {
+      console.log("Sync direction:", change.direction);
+    },
+    onError(error) {
+      console.error("Sync failed:", error);
+    },
+  },
+);
 
-PouchORM.startSync("local-data", "https://example.com/app-data", {
-  onChange(change) {
-    console.log("Sync direction:", change.direction);
-  },
-  onPaused(info) {
-    console.log("Sync paused:", info);
-  },
-  onError(error) {
-    console.error("Sync failed:", error);
-  },
-});
-
+operation.cancel();
+// or
 PouchORM.stopSync("local-data", "https://example.com/app-data");
 ```
 
-PouchORM keeps the two databases in sync. Changes move in both directions, and PouchDB retries after a connection problem. Put any additional PouchDB sync settings in `options.opts`. See the [PouchDB replication guide](https://pouchdb.com/guides/replication.html) for authentication, filtering, and other options.
+When the destination is a local database name, PouchORM opens or reuses it with the configured adapter. An HTTP or HTTPS destination is passed to PouchDB as a remote address. Calling `startSync` again for the same pair cancels and replaces the earlier operation. Stopping or completing an operation removes it from PouchORM's registry.
+
+See the [PouchDB replication guide](https://pouchdb.com/guides/replication.html) for authentication, filters, and other replication options.
 
 ## Custom IDs
 
-Set `idGenerator` on a collection instance or define it as a property on the collection class. It can return an ID immediately or return a promise.
+Set `idGenerator` on the collection. It may return immediately or return a promise.
 
 ```ts
-import { IModel, PouchCollection } from "pouchorm";
-
 type PersonId = `person:${string}`;
 
 interface PersonWithCustomId extends IModel<PersonId> {
   name: string;
-  age: number;
 }
 
 class PeopleWithCustomIds extends PouchCollection<
   PersonWithCustomId,
   PersonId
 > {
+  constructor() {
+    super({ database: "app-data", collection: "people" });
+  }
+
   idGenerator = (): PersonId => `person:${crypto.randomUUID()}`;
 }
 ```
 
 The default is a UUID string.
 
-## Raw PouchDB access
+## Direct PouchDB access
 
-Every collection exposes its PouchDB database as `collection.db`:
+Every collection exposes its database as `collection.db`:
 
 ```ts
 await people.db.putAttachment(
-  ada._id,
+  ada._id!,
   "avatar.png",
-  ada._rev,
+  ada._rev!,
   avatarBlob,
-  "image/png"
+  "image/png",
 );
 ```
 
-You can install additional plugins on the PouchDB constructor used by PouchORM:
+PouchDB is a peer dependency, so your application and PouchORM use the same constructor. Add plugins through `PouchORM.PouchDB`:
 
 ```ts
 PouchORM.PouchDB.plugin(myPlugin);
 ```
 
-When saving a document through the raw PouchDB API, set `$collectionType` to the collection's class name. Otherwise, PouchORM queries will not find that document.
+Call `PouchORM.usePouchDB(customConstructor)` before opening any database when you use a custom PouchDB build.
+
+When writing through the raw API, set `$collectionType` to `collection.collectionName`. PouchORM queries ignore documents with another collection name.
 
 ## Clearing or deleting a database
 
 ```ts
-await PouchORM.clearDatabase("app-data"); // delete every document
-await PouchORM.deleteDatabase("app-data"); // destroy and unregister the database
+await PouchORM.clearDatabase("app-data");
+await PouchORM.deleteDatabase("app-data");
 ```
 
-Both operations are irreversible. Existing collection instances should not be reused after `deleteDatabase`.
+`clearDatabase` removes application documents but preserves design documents and indexes, so existing collections remain usable. `deleteDatabase` stops change notifications and every synchronization involving that database, destroys it, and unregisters it. Do not reuse collection instances after deletion.
 
-## Bulk writes
-
-`bulkUpsert` and `bulkRemove` send an array of documents to PouchDB's `bulkDocs` method after adding the fields PouchORM needs:
-
-- they return one PouchDB response or error per item, not the saved documents;
-- `bulkUpsert` does not run class validation or merge existing fields;
-- updates must include the current `_rev`, just as they do with `bulkDocs`;
-- `bulkRemove` marks each supplied object as `_deleted`.
-
-Use individual `upsert` calls when you need validation or merge behavior.
+Both operations permanently remove data.
 
 ## Documentation
 
-- [Complete API reference](docs/API.md)
-- [Contributing guide](CONTRIBUTING.md)
+- [API reference](docs/API.md)
+- [Migrating to PouchORM 5](MIGRATING_TO_V5.md)
+- [Contributing](CONTRIBUTING.md)
 - [PouchDB documentation](https://pouchdb.com/)
 
 ## License

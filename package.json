@@ -1,33 +1,35 @@
 {
   "name": "pouchorm",
-  "version": "4.1.4",
-  "description": "PouchDB ORM for Typescript. Work with Multiple Pouch databases or multiple collections in a single database. Supports all platforms PouchDB supports.",
+  "version": "5.0.0",
+  "description": "A TypeScript data-modeling library for PouchDB databases and collections.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
     "pouchdb",
     "orm",
     "odm",
-    "Typescript",
+    "typescript",
     "electron",
     "web",
     "react-native"
   ],
   "repository": {
-    "type": "github",
-    "url": "https://github.com/iyobo/pouchorm"
+    "type": "git",
+    "url": "https://github.com/iyobo/pouchorm.git"
   },
   "scripts": {
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
     "build": "tsc",
-    "prepublish": "tsc && npm run lint && npm test",
     "dev": "tsc -w",
-    "lint": "eslint --fix",
-    "publish:patch": "npm run prepublish && npm version patch && npm publish",
-    "publish:minor": "npm run prepublish && npm version minor && npm publish",
-    "publish:major": "npm run prepublish && npm version major && npm publish"
+    "audit": "node scripts/audit-dependencies.mjs",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "npm run lint -- --fix",
+    "format:check": "prettier --check \"**/*.{ts,js,mjs,json,md,yml}\" --ignore-path .gitignore",
+    "test:package": "node scripts/test-package.mjs",
+    "verify": "npm run audit && npm run lint && npm run format:check && npm run build && npm run test:coverage -- --runInBand && npm run test:package",
+    "prepublishOnly": "npm run verify"
   },
   "files": [
     "dist/helpers.*",
@@ -36,40 +38,42 @@
     "dist/PouchORM.*",
     "dist/types.*",
     "docs/**/*",
-    "CONTRIBUTING.md"
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "MIGRATING_TO_V5.md",
+    "SECURITY.md"
   ],
   "author": "Iyobo Eki",
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
-    "pouchdb-adapter-memory": "^9.0.0",
-    "pouchdb": "^9.0.0",
-    "pouchdb-find": "8.0.1",
-    "reflect-metadata": "^0.1.13",
-    "uuid": "^8.3.2"
+    "pouchdb-find": "^9.0.0",
+    "uuid": "^11.1.1"
+  },
+  "peerDependencies": {
+    "class-validator": ">=0.14.4 <1",
+    "pouchdb": "^9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "class-validator": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@types/jest": "^24.0.25",
-    "@types/lodash": "^4.14.149",
-    "@types/node": "^12.12.24",
-    "@types/pouchdb": "^6.4.2",
-    "@typescript-eslint/eslint-plugin": "^5.9.0",
-    "@typescript-eslint/parser": "^5.9.0",
-    "eslint": "7.29.0",
-    "eslint-config-prettier": "8.3.0",
-    "eslint-config-standard": "16.0.3",
-    "eslint-plugin-import": "2.23.4",
-    "eslint-plugin-node": "11.1.0",
-    "eslint-plugin-prettier": "3.4.0",
-    "eslint-plugin-promise": "5.1.0",
-    "eslint-plugin-react": "7.24.0",
-    "eslint-plugin-standard": "5.0.0",
+    "@eslint/js": "^10.0.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.19.14",
+    "class-validator": "^0.14.4",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
     "jest": "^29.7.0",
-    "prettier": "2.3.1",
-    "supertest": "^4.0.2",
-    "ts-jest": "^29.2.5",
-    "typescript": "^5.6.3"
-  },
-  "optionalDependencies": {
-    "class-validator": "^0.14.1"
+    "pouchdb": "^9.0.0",
+    "pouchdb-adapter-memory": "^9.0.0",
+    "prettier": "^3.9.6",
+    "ts-jest": "^29.4.12",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.69.0"
   }
 }

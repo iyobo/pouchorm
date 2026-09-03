@@ -1,10 +1,6 @@
-import { IsNumber, IsString } from 'class-validator';
-import { PouchCollection } from '../../PouchCollection';
-import { IModel, PouchModel } from '../../types';
-
-// NOTE: Cannot test PouchORM.sync with memory adapter. Not supported.
-// PouchORM.PouchDB.plugin(require('pouchdb-adapter-memory'));
-// PouchORM.adapter = 'memory';
+import { IsNumber, IsString } from "class-validator";
+import { PouchCollection } from "../../PouchCollection";
+import { ClassValidate, IModel, PouchModel } from "../../types";
 
 export interface Person extends IModel {
   name: string;
@@ -14,41 +10,35 @@ export interface Person extends IModel {
 }
 
 export class PersonCollection extends PouchCollection<Person> {
+  constructor(database: string, validate = ClassValidate.INHERIT) {
+    super({ database, collection: "people", validate });
+  }
 
-  // Optional. Override to define collection-specific indexes.
   async beforeInit(): Promise<void> {
-
-    await this.addIndex(['age']); // be sure to create an index for what you plan to filter by.
+    await this.addIndex(["age"]);
   }
 
-  // Optional. Override to perform actions after all the necessary indexes have been created.
-  async afterInit(): Promise<void> {
+  async afterInit(): Promise<void> {}
 
-  }
+  async onChangeUpserted(_item: Person): Promise<void> {}
 
-  async onChangeUpserted(item): Promise<void> {
-    console.log('onChangeUpserted',item)
-  }
+  async onChangeDeleted(_item: Person): Promise<void> {}
 
-  async onChangeDeleted(item): Promise<void> {
-    console.log('onChangeDeleted',item)
-  }
-
-  async onChangeError(error): Promise<void> {
-  }
+  async onChangeError(_error: Error): Promise<void> {}
 }
-
 
 export class Account extends PouchModel<Account> {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsNumber()
-  age: number;
+  age!: number;
 }
 
 export class AccountCollection extends PouchCollection<Account> {
-  async onChangeUpserted(item): Promise<void> {
-    // console.log(item)
+  constructor(database: string, validate = ClassValidate.INHERIT) {
+    super({ database, collection: "accounts", validate });
   }
+
+  async onChangeUpserted(_item: Account): Promise<void> {}
 }
