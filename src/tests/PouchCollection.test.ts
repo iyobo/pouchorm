@@ -206,7 +206,9 @@ describe("PouchCollection", () => {
         age: input.age,
         $collectionType: "people",
       });
-      expect(saved._id).toBeTruthy();
+      expect(saved._id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+      );
       expect(saved._rev).toBeTruthy();
 
       const updated = await people.upsert({

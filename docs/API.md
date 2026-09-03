@@ -85,7 +85,7 @@ The collection's validation mode.
 (item?: T) => IDType | Promise<IDType>;
 ```
 
-An optional ID generator. PouchORM uses a UUID when it is absent.
+An optional ID generator. PouchORM uses a UUIDv7 value when it is absent. A caller-supplied `_id` or a custom generator may use another string format.
 
 #### `state`
 
@@ -363,7 +363,7 @@ Validation applies to `upsert` and `bulkUpsert`. Install and register `class-val
 
 | Field             | Purpose                                                   |
 | ----------------- | --------------------------------------------------------- |
-| `_id`             | PouchDB document ID. Generated when absent.               |
+| `_id`             | PouchDB document ID. Generated as UUIDv7 when absent.     |
 | `_rev`            | Current PouchDB revision.                                 |
 | `_deleted`        | PouchDB deletion marker.                                  |
 | `$timestamp`      | Millisecond Unix timestamp assigned by an upsert.         |
