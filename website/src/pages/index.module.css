@@ -82,8 +82,13 @@
   padding: 0.75rem 1rem;
 }
 
-.codePanel pre {
-  background: transparent;
+.codePanel :global(.theme-code-block) {
+  border-radius: 0;
+  margin: 0;
+}
+
+.codePanel :global(.theme-code-block pre) {
+  border-radius: 0;
   font-size: 0.84rem;
   line-height: 1.65;
   margin: 0;
@@ -181,7 +186,7 @@
     display: grid;
   }
 
-  .codePanel pre {
+  .codePanel :global(.theme-code-block pre) {
     font-size: 0.76rem;
     padding: 1rem;
   }

@@ -1,8 +1,31 @@
 import clsx from "clsx";
+import CodeBlock from "@theme/CodeBlock";
 import Heading from "@theme/Heading";
 import Layout from "@theme/Layout";
 import Link from "@docusaurus/Link";
 import styles from "./index.module.css";
+
+const collectionExample = `import { IModel, PouchCollection } from "pouchorm";
+
+interface Person extends IModel {
+  name: string;
+  age: number;
+}
+
+class People extends PouchCollection<Person> {
+  constructor() {
+    super({
+      database: "app-data",
+      collection: "people",
+    });
+  }
+}
+
+const people = new People();
+const ada = await people.upsert({
+  name: "Ada Lovelace",
+  age: 36,
+});`;
 
 const capabilities = [
   {
@@ -57,29 +80,7 @@ function HomepageHeader() {
             <span>people.ts</span>
             <span>TypeScript</span>
           </div>
-          <pre>
-            <code>{`import { IModel, PouchCollection } from "pouchorm";
-
-interface Person extends IModel {
-  name: string;
-  age: number;
-}
-
-class People extends PouchCollection<Person> {
-  constructor() {
-    super({
-      database: "app-data",
-      collection: "people",
-    });
-  }
-}
-
-const people = new People();
-const ada = await people.upsert({
-  name: "Ada Lovelace",
-  age: 36,
-});`}</code>
-          </pre>
+          <CodeBlock language="typescript">{collectionExample}</CodeBlock>
         </div>
       </div>
     </header>
