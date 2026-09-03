@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.1.0 — 2026-09-03
+
+- Generate new default document IDs with UUIDv7 instead of UUIDv4. Existing IDs and custom ID generators remain supported.
+
 ## 5.0.0 — 2026-09-03
 
 ### Correctness

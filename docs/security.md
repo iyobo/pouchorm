@@ -27,6 +27,8 @@ The `$by` field records the value most recently supplied through `PouchORM.setUs
 
 When synchronizing with a remote database, use the authentication and transport controls supported by that server and PouchDB runtime. Do not put secrets into URLs that logs or error reports may capture.
 
+Default document IDs use UUIDv7 and therefore reveal their approximate generation time. Treat document IDs as identifiers, not authentication credentials or secret tokens. Existing IDs and custom string formats remain supported.
+
 ## Dependency advisory
 
 PouchDB 9 currently brings UUID 8 through several packages. npm reports [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq) for those paths. The affected buffer-taking UUID APIs are not used by PouchORM or the inspected PouchDB paths. PouchORM's direct UUID dependency contains the fix.

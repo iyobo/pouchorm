@@ -102,6 +102,7 @@ Set `idGenerator` when IDs need a stable application prefix or format:
 type TaskId = `task:${string}`;
 
 interface TaskWithId extends IModel<TaskId> {
+  externalId: string;
   title: string;
 }
 
@@ -110,8 +111,11 @@ class Tasks extends PouchCollection<TaskWithId, TaskId> {
     super({ database: "app-data", collection: "tasks" });
   }
 
-  idGenerator = (): TaskId => `task:${crypto.randomUUID()}`;
+  idGenerator = (task?: TaskWithId): TaskId => {
+    if (!task) throw new Error("Task data is required");
+    return `task:${task.externalId}`;
+  };
 }
 ```
 
-PouchORM uses a UUID string when no generator is configured. An `_id` supplied to `upsert` always takes precedence.
+PouchORM uses a UUIDv7 string when no generator is configured. UUIDv7 values retain UUID uniqueness while sorting by their embedded creation time. An `_id` supplied to `upsert` always takes precedence, so existing IDs and application-defined ID formats continue to work.

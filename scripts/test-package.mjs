@@ -12,6 +12,9 @@ const temporaryDirectory = await mkdtemp(
   path.join(tmpdir(), "pouchorm-consumer-"),
 );
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const packageManifest = JSON.parse(
+  await readFile(path.join(repository, "package.json"), "utf8"),
+);
 
 const run = (command, args, cwd = temporaryDirectory) => {
   execFileSync(command, args, {
@@ -140,6 +143,9 @@ class Notes extends PouchCollection {
   const database = 'packed_consumer';
   const notes = new Notes(database);
   const saved = await notes.upsert({ title: 'Packaged library' });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(saved._id)) {
+    throw new Error('The installed package did not generate a UUIDv7 document ID.');
+  }
   const found = await notes.findById(saved._id);
   if (!found || found.title !== 'Packaged library') {
     throw new Error('The installed package did not complete a write and read.');
@@ -170,9 +176,9 @@ class Notes extends PouchCollection {
       "utf8",
     ),
   );
-  if (installedPackage.version !== "5.0.0") {
+  if (installedPackage.version !== packageManifest.version) {
     throw new Error(
-      `Expected package version 5.0.0, received ${installedPackage.version}.`,
+      `Expected package version ${packageManifest.version}, received ${installedPackage.version}.`,
     );
   }
 } finally {
