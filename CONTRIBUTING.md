@@ -14,12 +14,13 @@ npm ci
 
 ## Build and test
 
-Run the TypeScript build and the test suite before opening a pull request:
+Run the same verification used before publication:
 
 ```sh
-npm run build
-npm test -- --runInBand
+npm run verify
 ```
+
+This checks linting and formatting, builds the declarations, runs the Jest suite, packs the library, installs it in a clean consumer project, type-checks that project with strict settings, and exercises the installed package.
 
 To inspect coverage locally:
 
@@ -27,7 +28,7 @@ To inspect coverage locally:
 npm test -- --runInBand --coverage
 ```
 
-Tests use local PouchDB databases. Give new tests unique database names and destroy those databases in teardown so live changes feeds do not outlive the test suite.
+Most tests use the in-memory PouchDB adapter. Give new tests unique database names and destroy those databases in teardown so change listeners do not outlive the test suite.
 
 ## Pull requests
 
@@ -43,7 +44,9 @@ Tests use local PouchDB databases. Give new tests unique database names and dest
 - `src/PouchORM.ts` coordinates databases, changes feeds, validation, and replication.
 - `src/types.ts` contains public model types and enums.
 - `src/tests` contains the Jest test suite.
+- `scripts/test-package.mjs` verifies the package from a clean consumer's point of view.
 - `docs/API.md` is the public API reference.
+- `MIGRATING_TO_V5.md` records breaking changes and their migration steps.
 
 ## Reporting bugs
 

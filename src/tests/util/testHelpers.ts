@@ -1,9 +1,8 @@
-import { Person } from './TestClasses';
-
+import { Person } from "./TestClasses";
 
 export function makePerson(): Person {
   return {
-    name: 'Spyder',
+    name: "Spyder",
     age: 40,
   };
 }

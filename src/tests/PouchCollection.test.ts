@@ -1,485 +1,391 @@
-// Person.ts
+import memoryAdapter from "pouchdb-adapter-memory";
+import * as classValidator from "class-validator";
+import { ValidationError } from "class-validator";
+import { PouchCollection } from "../PouchCollection";
+import { PouchORM } from "../PouchORM";
+import { UpsertHelper } from "../helpers";
+import { ClassValidate, CollectionSort, CollectionState } from "../types";
+import {
+  Account,
+  AccountCollection,
+  Person,
+  PersonCollection,
+} from "./util/TestClasses";
+import { makePerson, waitFor } from "./util/testHelpers";
 
-import { Account, AccountCollection, Person, PersonCollection } from './util/TestClasses';
-import { ValidationError } from 'class-validator';
-import { ClassValidate, CollectionState } from '../types';
-import { UpsertHelper } from '../helpers';
-import { PouchORM } from '../PouchORM';
-import { PouchCollection } from '../PouchCollection';
-import { makePerson, waitFor } from './util/testHelpers';
+const databaseName = "pouchorm_collection_tests";
+PouchORM.PouchDB.plugin(memoryAdapter);
+PouchORM.adapter = "memory";
+PouchORM.useClassValidator(classValidator);
 
-const dbName = 'unit_test';
-
-describe('PouchCollection Instance', () => {
-
-  const personCollection: PersonCollection = new PersonCollection(dbName);
-  const accountCollection: AccountCollection = new AccountCollection(dbName);
+describe("PouchCollection", () => {
+  const people = new PersonCollection(databaseName);
+  const accounts = new AccountCollection(databaseName);
 
   afterEach(async () => {
-    jest.clearAllMocks();
-    jest.resetAllMocks();
+    people.idGenerator = undefined;
+    PouchORM.VALIDATE = ClassValidate.OFF;
+    PouchORM.setUser();
+    await PouchORM.clearDatabase(databaseName);
+    jest.restoreAllMocks();
   });
 
   afterAll(async () => {
-    await PouchORM.deleteDatabase(dbName);
+    await PouchORM.deleteDatabase(databaseName);
   });
 
-  describe('initialization', () => {
-    it('waits for one shared initialization before concurrent operations continue', async () => {
-      let releaseInitialization: () => void;
-      const initializationGate = new Promise<void>(resolve => {
+  describe("initialization", () => {
+    it("waits for one initialization when operations start together", async () => {
+      let releaseInitialization!: () => void;
+      const gate = new Promise<void>((resolve) => {
         releaseInitialization = resolve;
       });
 
-      class SlowPersonCollection extends PouchCollection<Person> {
+      class SlowPeople extends PouchCollection<Person> {
+        constructor() {
+          super({ database: "slow_init", collection: "slow-people" });
+        }
+
         async beforeInit(): Promise<void> {
-          await initializationGate;
+          await gate;
         }
       }
 
-      const slowDbName = 'unit_test_slow_init';
-      const slowCollection = new SlowPersonCollection(slowDbName);
-      const firstFind = slowCollection.find({});
-
+      const collection = new SlowPeople();
+      const first = collection.find();
       await waitFor(10);
-      expect(slowCollection._state).toBe(CollectionState.LOADING);
+      expect(collection.state).toBe(CollectionState.LOADING);
 
-      let secondFindFinished = false;
-      const secondFind = slowCollection.find({}).then(result => {
-        secondFindFinished = true;
+      let secondFinished = false;
+      const second = collection.find().then((result) => {
+        secondFinished = true;
         return result;
       });
-
       await waitFor(10);
-      expect(secondFindFinished).toBe(false);
+      expect(secondFinished).toBe(false);
 
       releaseInitialization();
-      await Promise.all([firstFind, secondFind]);
-      expect(slowCollection._state).toBe(CollectionState.READY);
-
-      await PouchORM.deleteDatabase(slowDbName);
+      await Promise.all([first, second]);
+      expect(collection.state).toBe(CollectionState.READY);
+      await PouchORM.deleteDatabase("slow_init");
     });
 
-    it('can retry after initialization fails', async () => {
+    it("can retry after initialization fails", async () => {
       let attempts = 0;
 
-      class FlakyPersonCollection extends PouchCollection<Person> {
+      class FlakyPeople extends PouchCollection<Person> {
+        constructor() {
+          super({ database: "flaky_init", collection: "flaky-people" });
+        }
+
         async beforeInit(): Promise<void> {
           attempts += 1;
-          if (attempts === 1) throw new Error('Temporary initialization failure');
+          if (attempts === 1)
+            throw new Error("Temporary initialization failure");
         }
       }
 
-      const flakyDbName = 'unit_test_flaky_init';
-      const flakyCollection = new FlakyPersonCollection(flakyDbName);
-
-      await expect(flakyCollection.find({})).rejects.toThrow('Temporary initialization failure');
-      expect(flakyCollection._state).toBe(CollectionState.NEW);
-      await expect(flakyCollection.find({})).resolves.toEqual([]);
-      expect(flakyCollection._state).toBe(CollectionState.READY);
-
-      await PouchORM.deleteDatabase(flakyDbName);
+      const collection = new FlakyPeople();
+      await expect(collection.find()).rejects.toThrow(
+        "Temporary initialization failure",
+      );
+      expect(collection.state).toBe(CollectionState.NEW);
+      await expect(collection.find()).resolves.toEqual([]);
+      expect(collection.state).toBe(CollectionState.READY);
+      await PouchORM.deleteDatabase("flaky_init");
     });
   });
 
-  describe('upsert', () => {
-    it('creates new documents if does not exist', async () => {
-
-      const p = makePerson();
-      expect(p._id).toBeUndefined();
-      expect(p._rev).toBeUndefined();
-
-      const person: Person = await personCollection.upsert(p) as Person;
-
-      expect(person).toBeTruthy();
-      expect(person.name).toBe(makePerson().name);
-      expect(person._id).toBeTruthy();
-      expect(person._rev).toBeTruthy();
-      expect(person.$collectionType).toBeTruthy();
-      expect(person.$timestamp).toBeTruthy();
-    });
-    it('updates documents if exist', async () => {
-
-      const p = makePerson();
-      const person = await personCollection.upsert(p);
-      expect(person.age).toBe(p.age);
-
-      person.age = 501;
-      const updatedPerson = await personCollection.upsert(person);
-      expect(updatedPerson.age).toBe(501);
-    });
-    it('updates documents with delta function', async () => {
-
-      const p = makePerson();
-      const person = await personCollection.upsert(p);
-      expect(person.age).toBe(p.age);
-
-      person.age = 70;
-      const updatedPerson = await personCollection.upsert(person, UpsertHelper(person).merge);
-      expect(updatedPerson.age).toBe(70);
-    });
-    it('uses custom idGenerator if defined when creating documents ', async () => {
-
-      const p = makePerson();
-      expect(p._id).toBeUndefined();
-
-      const randomId = `p${Date.now()}`;
-      personCollection.idGenerator = () => {
-        return randomId;
-      };
-      const person: Person = await personCollection.upsert(p) as Person;
-
-
-      expect(person).toBeTruthy();
-      expect(person._id).toBe(randomId);
-
-      // clean up
-      personCollection.idGenerator = null;
-    });
-
-    it('calls onChangeUpserted when new', async () => {
-      const a = new Account({
-        name: 'Alie',
-        age: 17
-      });
-      const internalMethodSpy = jest.spyOn(accountCollection, 'onChangeUpserted');
-      const account = await accountCollection.upsert(a);
-
-      await waitFor()
-      expect(internalMethodSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
-        name: 'Alie',
-        age: 17
-      }));
-
-    });
-
-    it('calls onChangeUpserted when updating', async () => {
-      const a = new Account({
-        _id: "alie123",
-        name: 'Alie',
-        age: 17
-      });
-      const internalMethodSpy = jest.spyOn(accountCollection, 'onChangeUpserted');
-      const persistedA = await accountCollection.upsert(a);
-      persistedA.age++;
-      await accountCollection.upsert(persistedA);
-
-      await waitFor()
-      expect(internalMethodSpy).toHaveBeenNthCalledWith(1, expect.objectContaining({
-        name: 'Alie',
-        age: 17
-      }));
-
-      expect(internalMethodSpy).toHaveBeenNthCalledWith(2, expect.objectContaining({
-        name: 'Alie',
-        age: 18
-      }));
-
-    });
-
-  });
-
-  describe('addIndex', () => {
-    beforeEach(async () => {
-      await personCollection.removeIndex('testIndex');
-    });
-
-    it('can create named indexes', async () => {
-      const f = await personCollection.addIndex(['name'], 'testIndex');
-      expect(personCollection._indexes[3]).toBeTruthy();
-      expect(personCollection._indexes[3]?.name).toBe('testIndex');
-      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
-    });
-
-    it('can create compound indexes with multiple fields', async () => {
-      await personCollection.addIndex(['name', 'otherInfo'], 'testIndex');
-      expect(personCollection._indexes[3]).toBeTruthy();
-      expect(personCollection._indexes[3]?.name).toBe('testIndex');
-      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
-      expect(personCollection._indexes[3]?.fields?.includes('otherInfo')).toBe(true);
-    });
-
-    it('adds $collectionType field to indexes', async () => {
-      // Adding the $collectionType to every index of this collection for fast collection-level querying
-      await personCollection.addIndex(['name'], 'testIndex');
-      expect(personCollection._indexes[3]).toBeTruthy();
-      expect(personCollection._indexes[3]?.fields?.length).toBe(2);
-      expect(personCollection._indexes[3]?.fields?.includes('name')).toBe(true);
-      expect(personCollection._indexes[3]?.fields?.includes('$collectionType')).toBe(true);
-    });
-
-    it('does not mutate the supplied field list', async () => {
-      const fields: (keyof Person)[] = ['name'];
-      await personCollection.addIndex(fields, 'testIndex');
-
-      expect(fields).toEqual(['name']);
-    });
-  });
-
-  describe('bulkUpsert', () => {
-    it('creates documents in array', async () => {
-
-      const bulkPersons = await personCollection.bulkUpsert([
-        {
-          name: 'tifa',
-          age: 25
-        },
-        {
-          name: 'cloud',
-          age: 28
-        },
-        {
-          name: 'sephiroth',
-          age: 999
-        },
-      ]);
-
-      expect(bulkPersons).toHaveLength(3);
-      expect(bulkPersons[0].id).toBeTruthy();
-      expect(bulkPersons[1].id).toBeTruthy();
-      expect(bulkPersons[2].id).toBeTruthy();
-    });
-    it('updates documents in an array', async () => {
-
-      const p = makePerson();
-      const person = await personCollection.upsert(p);
-      expect(person._id).toBeTruthy();
-
-      person.age = 57;
-      const bulkPersons = await personCollection.bulkUpsert([
-        {
-          name: 'tifa',
-          age: 25
-        },
-        {
-          name: 'cloud',
-          age: 28
-        },
-        {
-          name: 'sephiroth',
-          age: 999
-        },
-        person
-      ]);
-
-      expect(bulkPersons).toHaveLength(4);
-      expect(bulkPersons[0].id).toBeTruthy();
-      expect(bulkPersons[1].id).toBeTruthy();
-      expect(bulkPersons[2].id).toBeTruthy();
-      expect(bulkPersons[3].id).toBeTruthy();
-      expect(bulkPersons[3].id).toBe(person._id);
-    });
-
-    it('calls onChangeUpserted for each item', async () => {
-
-      const spy = jest.spyOn(personCollection, 'onChangeUpserted');
-      const bulkPersons = await personCollection.bulkUpsert([
-        {
-          name: 'tifa1',
-          age: 11
-        },
-        {
-          name: 'cloud1',
-          age: 22
-        },
-        {
-          name: 'sephiroth1',
-          age: 33
-        },
-      ]);
-
-      await waitFor()
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'tifa1',
-        age: 11
-      }));
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'cloud1',
-        age: 22
-      }));
-      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
-        name: 'sephiroth1',
-        age: 33
-      }));
-
-    });
-  });
-
-  describe('with data', () => {
-
-    let bulkPersons;
-    let bulkAccounts;
-
-    beforeEach(async () => {
-
-      bulkPersons = await personCollection.bulkUpsert([
-        {
-          name: 'tifa',
-          age: 25
-        },
-        {
-          name: 'cloud',
-          age: 28
-        },
-        {
-          name: 'Kingsley',
-          age: 28
-        },
-        {
-          name: 'sephiroth',
-          age: 999
+  describe("collection identity", () => {
+    it("uses the explicit collection name rather than the JavaScript class name", async () => {
+      class DevelopmentName extends PouchCollection<Person> {
+        constructor() {
+          super({ database: "stable_identity", collection: "people" });
         }
+      }
+      class MinifiedName extends PouchCollection<Person> {
+        constructor() {
+          super({ database: "stable_identity", collection: "people" });
+        }
+      }
+
+      const developmentBuild = new DevelopmentName();
+      const productionBuild = new MinifiedName();
+      const saved = await developmentBuild.upsert(makePerson());
+
+      expect(saved.$collectionType).toBe("people");
+      await expect(productionBuild.findById(saved._id!)).resolves.toMatchObject(
+        {
+          _id: saved._id,
+          $collectionType: "people",
+        },
+      );
+      await PouchORM.deleteDatabase("stable_identity");
+    });
+
+    it("rejects missing database and collection names", () => {
+      expect(
+        () =>
+          new (class extends PouchCollection<Person> {})({
+            database: "",
+            collection: "people",
+          }),
+      ).toThrow("database name");
+      expect(
+        () =>
+          new (class extends PouchCollection<Person> {})({
+            database: "app",
+            collection: "",
+          }),
+      ).toThrow("collection name");
+    });
+  });
+
+  describe("queries", () => {
+    it("finds every document in a collection without mutating the selector", async () => {
+      await people.bulkUpsert([
+        { name: "Tifa", age: 25 },
+        { name: "Cloud", age: 28 },
+        { name: "Barret", age: 35 },
       ]);
-      expect(bulkPersons).toHaveLength(4);
+      await accounts.upsert(new Account({ name: "Cid", age: 32 }));
 
-      bulkAccounts = await accountCollection.bulkUpsert([
-        new Account({
-          name: 'Darmok',
-          age: 202
-        }),
-        new Account({
-          name: 'Jalad',
-          age: 102
-        }),
-        new Account({
-          name: 'Tanagra',
-          age: 102
-        })
+      const selector: Partial<Person> = {};
+      const documents = await people.find(selector);
+
+      expect(documents).toHaveLength(3);
+      expect(selector).toEqual({});
+    });
+
+    it("supports explicit ascending and descending sort directions", async () => {
+      await people.bulkUpsert([
+        { name: "Tifa", age: 25 },
+        { name: "Cloud", age: 28 },
+        { name: "Barret", age: 35 },
       ]);
-      expect(bulkAccounts).toHaveLength(3);
 
+      const sort: CollectionSort<Person> = [{ age: "desc" }];
+      const documents = await people.find({ age: { $gte: 0 } }, { sort });
+      expect(documents.map((document) => document.age)).toEqual([35, 28, 25]);
+      expect(sort).toEqual([{ age: "desc" }]);
     });
-    afterEach(async () => PouchORM.clearDatabase(dbName));
 
-    describe('finding with', () => {
-      describe('find', () => {
-        it('gets all interface-based items matching non-indexed fields', async () => {
+    it("rejects mixed sort directions instead of returning the wrong order", async () => {
+      await expect(
+        people.find({ age: { $gte: 0 } }, { sort: [{ age: "desc" }, "name"] }),
+      ).rejects.toThrow("same direction");
+    });
 
-          const guys = await personCollection.find({name: 'Kingsley'});
-          expect(guys).toHaveLength(1);
-        });
-        it('gets all interface-based items matching indexed fields', async () => {
+    it("returns null for missing IDs and documents from another collection", async () => {
+      const account = await accounts.upsert(
+        new Account({ name: "Darmok", age: 202 }),
+      );
 
-          const guys = await personCollection.find({age: 28});
-          expect(guys).toHaveLength(2);
-        });
-        it('gets all class-based items matching indexed fields', async () => {
+      await expect(people.findById("missing")).resolves.toBeNull();
+      await expect(people.findById(account._id!)).resolves.toBeNull();
+    });
 
-          const accounts = await accountCollection.find({age: 102});
-          expect(accounts).toHaveLength(2);
-        });
-        it('does not mutate the supplied selector', async () => {
-          const selector: Partial<Person> = {name: 'Kingsley'};
+    it("throws useful errors from the fail variants", async () => {
+      await expect(people.findOneOrFail({ name: "Nobody" })).rejects.toThrow(
+        "people matching",
+      );
+      await expect(people.findByIdOrFail("missing")).rejects.toThrow(
+        "people with id missing does not exist",
+      );
+    });
+  });
 
-          await personCollection.find(selector);
+  describe("writes", () => {
+    it("creates and updates without mutating the caller-owned object", async () => {
+      const input = makePerson();
+      const saved = await people.upsert(input);
 
-          expect(selector).toEqual({name: 'Kingsley'});
-        });
+      expect(input).toEqual(makePerson());
+      expect(saved).toMatchObject({
+        name: input.name,
+        age: input.age,
+        $collectionType: "people",
+      });
+      expect(saved._id).toBeTruthy();
+      expect(saved._rev).toBeTruthy();
+
+      const updated = await people.upsert({
+        ...input,
+        _id: saved._id,
+        age: 41,
+      });
+      expect(updated.age).toBe(41);
+      expect(updated._rev).not.toBe(saved._rev);
+    });
+
+    it("retries a revision conflict with the latest document", async () => {
+      const saved = await people.upsert({ name: "Cloud", age: 28 });
+      const originalPut = people.db.put.bind(people.db);
+      let calls = 0;
+      jest.spyOn(people.db, "put").mockImplementation(async (document) => {
+        calls += 1;
+        if (calls === 1) throw { status: 409 };
+        return originalPut(document);
       });
 
-      describe('findById', () => {
-        it('gets interface-based item by id', async () => {
+      const updated = await people.upsert({ ...saved, age: 1 }, (existing) => ({
+        ...existing,
+        age: existing.age + 1,
+      }));
 
-          const tifa = await personCollection.findById(bulkPersons[0].id);
-          expect(tifa).toBeTruthy();
-          expect(tifa._id).toBe(bulkPersons[0].id);
-          expect(tifa.name).toBe('tifa');
-        });
+      expect(calls).toBe(2);
+      expect(updated.age).toBe(29);
+    });
 
-        it('gets class-based item by id', async () => {
+    it("supports asynchronous custom ID generation", async () => {
+      people.idGenerator = async () => "person:custom";
+      const saved = await people.upsert(makePerson());
+      expect(saved._id).toBe("person:custom");
+    });
 
-          const jalad = await accountCollection.findById(bulkAccounts[1].id);
-          expect(jalad).toBeTruthy();
-          expect(jalad._id).toBe(bulkAccounts[1].id);
-          expect(jalad.name).toBe('Jalad');
-        });
+    it("rejects an empty generated ID", async () => {
+      people.idGenerator = () => "";
+      await expect(people.upsert(makePerson())).rejects.toThrow(
+        "non-empty string",
+      );
+    });
 
-        it('returns null if item does not exist', async () => {
+    it("sets the configured user on saved documents", async () => {
+      PouchORM.setUser("user-123");
+      const saved = await people.upsert(makePerson());
+      expect(saved.$by).toBe("user-123");
+    });
 
-          const nada = await personCollection.findById('zilch');
-          expect(nada).toBeFalsy();
-        });
+    it("bulk-upserts documents using the same update and validation behavior", async () => {
+      const existing = await people.upsert({ name: "Tifa", age: 25 });
+      const saved = await people.bulkUpsert([
+        { _id: existing._id, name: "Tifa", age: 26 },
+        { name: "Cloud", age: 28 },
+      ]);
+
+      expect(saved).toHaveLength(2);
+      expect(saved[0]).toMatchObject({ _id: existing._id, age: 26 });
+      expect(saved[0]._rev).not.toBe(existing._rev);
+      expect(saved[1]._id).toBeTruthy();
+    });
+
+    it("applies repeated IDs in input order during bulk upsert", async () => {
+      await people.bulkUpsert([
+        { _id: "same-id", name: "First", age: 1 },
+        { _id: "same-id", name: "Second", age: 2 },
+      ]);
+
+      await expect(people.findById("same-id")).resolves.toMatchObject({
+        name: "Second",
+        age: 2,
       });
     });
-    describe('removeById', () => {
 
-      it('removes by id', async () => {
+    it("does not mutate documents passed to bulk removal", async () => {
+      const saved = await people.bulkUpsert([
+        { name: "Tifa", age: 25 },
+        { name: "Cloud", age: 28 },
+      ]);
 
-        const p1 = await personCollection.find({});
-        expect(p1).toHaveLength(4);
+      await people.bulkRemove(saved);
 
-        const cloud = await personCollection.findById(p1[1]._id);
-        expect(cloud).toBeTruthy();
-
-        await personCollection.removeById(cloud._id);
-
-        const p2 = await personCollection.find({});
-        expect(p2).toHaveLength(3);
-
-        const cloud2 = await personCollection.findById(p1[1]._id);
-        expect(cloud2).toBeFalsy();
-
-      });
-
-      // it('calls onChangeDeleted', async () => {
-      //   jest.resetAllMocks()
-      //   jest.clearAllMocks()
-      //
-      //   const p1 = await personCollection.find({});
-      //
-      //   const cloud = await personCollection.findById(p1[1]._id);
-      //   expect(cloud).toBeTruthy();
-      //
-      //   const spy = jest.spyOn(personCollection, 'onChangeDeleted');
-      //   await personCollection.removeById(cloud._id);
-      //
-      //   await waitFor(1000)
-      //   expect(spy).toHaveBeenCalledTimes(1)
-      //   expect(spy).toHaveBeenCalledWith(expect.objectContaining(p1[1]))
-      // })
+      expect(saved.every((document) => document._deleted === undefined)).toBe(
+        true,
+      );
+      await expect(people.find()).resolves.toEqual([]);
     });
-    describe('bulkRemove', () => {
 
-      it('removes all documents in array from database', async () => {
-        const guys = await personCollection.find({age: 28});
-        await personCollection.bulkRemove(guys);
-
-        const newguys = await personCollection.find({age: 28});
-        expect(newguys).toHaveLength(0);
-      });
-
+    it("returns false when removeById cannot find the document", async () => {
+      await expect(people.removeById("missing")).resolves.toBe(false);
     });
-    describe('upsert with', () => {
+  });
 
-      it('new instance of class Model', async () => {
-        const a = new Account({
-          name: 'Spyder',
-          age: 32
-        });
-        const account = await accountCollection.upsert(a);
-        expect(account.age).toBe(a.age);
+  describe("validation", () => {
+    it("rejects invalid models when configured to reject", async () => {
+      const rejectingAccounts = new AccountCollection(
+        databaseName,
+        ClassValidate.ON_AND_REJECT,
+      );
+      const invalid = new Account({
+        name: "Spyder",
+        age: "32" as unknown as number,
       });
 
-      it('validation of class Model properties', async () => {
-        const a = new Account({
-          name: 'Spyder',
-          age: '32' as unknown as number
-        });
-        let error: ValidationError[];
+      await expect(rejectingAccounts.upsert(invalid)).rejects.toEqual(
+        expect.arrayContaining([expect.any(ValidationError)]),
+      );
+    });
 
-        PouchORM.VALIDATE = ClassValidate.ON_AND_REJECT;
+    it("allows a collection to disable globally enabled validation", async () => {
+      PouchORM.VALIDATE = ClassValidate.ON_AND_REJECT;
+      const unvalidatedAccounts = new AccountCollection(
+        databaseName,
+        ClassValidate.OFF,
+      );
+      const invalid = new Account({
+        name: "Spyder",
+        age: "32" as unknown as number,
+      });
 
-        try {
-          await accountCollection.upsert(a);
-        } catch (err) {
-          error = err;
+      await expect(unvalidatedAccounts.upsert(invalid)).resolves.toMatchObject({
+        age: "32",
+      });
+    });
+
+    it("validates every bulk-upserted model", async () => {
+      const rejectingAccounts = new AccountCollection(
+        databaseName,
+        ClassValidate.ON_AND_REJECT,
+      );
+
+      await expect(
+        rejectingAccounts.bulkUpsert([
+          new Account({ name: "Valid", age: 32 }),
+          new Account({ name: "Invalid", age: "wrong" as unknown as number }),
+        ]),
+      ).rejects.toEqual(expect.arrayContaining([expect.any(ValidationError)]));
+    });
+
+    it("preserves class validation when an update uses UpsertHelper", async () => {
+      const rejectingAccounts = new AccountCollection(
+        databaseName,
+        ClassValidate.ON_AND_REJECT,
+      );
+      const saved = await rejectingAccounts.upsert(
+        new Account({ name: "Valid", age: 32 }),
+      );
+      const invalid = new Account({
+        ...saved,
+        age: "wrong" as unknown as number,
+      });
+
+      await expect(
+        rejectingAccounts.upsert(invalid, UpsertHelper(invalid).merge),
+      ).rejects.toEqual(expect.arrayContaining([expect.any(ValidationError)]));
+    });
+  });
+
+  describe("change hooks", () => {
+    it("forwards rejected change hooks to onChangeError", async () => {
+      class HookedPeople extends PouchCollection<Person> {
+        constructor() {
+          super({ database: "hook_errors", collection: "people" });
         }
 
-        expect(error[0]).toBeInstanceOf(ValidationError);
-      });
+        onChangeUpserted(): Promise<void> {
+          throw new Error("Hook failed");
+        }
+      }
 
+      const collection = new HookedPeople();
+      const errorHandler = jest.spyOn(collection, "onChangeError");
+      await collection.upsert(makePerson());
+      await waitFor(20);
 
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Hook failed" }),
+      );
+      await PouchORM.deleteDatabase("hook_errors");
     });
   });
-
 });
