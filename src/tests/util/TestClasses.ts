@@ -15,7 +15,7 @@ export interface Person extends IModel {
 
 export class PersonCollection extends PouchCollection<Person> {
 
-  // Optional. Overide to define collection-specific indexes.
+  // Optional. Override to define collection-specific indexes.
   async beforeInit(): Promise<void> {
 
     await this.addIndex(['age']); // be sure to create an index for what you plan to filter by.

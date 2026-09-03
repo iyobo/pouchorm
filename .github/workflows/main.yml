@@ -8,55 +8,28 @@ on:
     branches:
       - master
 
-jobs:
-  build:
+permissions:
+  contents: read
 
+jobs:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
-    - name: Install and build
-      run: yarn
-    - name: Run Tests
-      run: yarn test:coverage >> coverage.txt
-    - name: Extract coverage percentage
-      id: extract_coverage
-      run: |
-        COVERAGE=$(awk '/Statements/ {print $3}' coverage.txt | tr -d '%')
-        echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
-        echo "COVERAGE=$COVERAGE"
-    - name: Create coverage badge
-      run: |
-        # Create the JSON payload and encode it for URL
-        LABEL="coverage"
-        MESSAGE="${{ env.COVERAGE }}%"
-        COLOR="brightgreen"
-        
-        # Use curl to fetch the badge
-        curl -G "https://img.shields.io/static/v1" \
-        --data-urlencode "label=$LABEL" \
-        --data-urlencode "message=$MESSAGE" \
-        --data-urlencode "color=$COLOR" \
-        -o coverage-badge.svg
-        
-        # Print the generated badge to verify
-        cat coverage-badge.svg
-    - name: Configure Git for pushing
-      run: |
-        git config user.name "GitHub Action"
-        git config user.email "action@github.com"
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-    - name: Commit coverage badge
-      run: |
-        mv coverage-badge.svg ./coverage.svg
-        git add .
-        if ! git diff-index --quiet HEAD; then
-          git commit -m "Update coverage badge"
-        fi
-    - name: Push changes
-      run: |
-        # push to master
-        git push origin HEAD:master
-    - uses: wow-actions/purge-readme@v1
-      with:
-        GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: npm run build
+
+      - name: Run tests with coverage
+        run: npm test -- --runInBand --coverage

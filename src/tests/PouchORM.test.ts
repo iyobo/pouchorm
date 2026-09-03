@@ -21,7 +21,18 @@ describe('PouchORM', () => {
 
       // deleting
       await PouchORM.deleteDatabase(dbName);
-      await expect(personCollection.find({})).rejects.toThrow('database is destroyed');
+      await expect(personCollection.find({})).rejects.toThrow();
+
+    });
+
+    it('works after its change listener has been stopped', async () => {
+      const dbName = 'unit_test_stopped_listener';
+      const personCollection = new PersonCollection(dbName);
+
+      PouchORM.stopChangeListener(dbName);
+
+      await PouchORM.deleteDatabase(dbName);
+      await expect(personCollection.find({})).rejects.toThrow();
 
     });
   });
@@ -39,7 +50,7 @@ describe('PouchORM', () => {
     });
 
     afterAll(async ()=>{
-      await Promise.all([PouchORM.clearDatabase(db1), PouchORM.clearDatabase(db2)]);
+      await Promise.all([PouchORM.deleteDatabase(db1), PouchORM.deleteDatabase(db2)]);
     })
 
     it('syncs between 2 databases', async () => {

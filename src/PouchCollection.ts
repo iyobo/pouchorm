@@ -4,12 +4,10 @@ import {v4 as uuid} from 'uuid';
 import {PouchORM} from './PouchORM';
 import CreateIndexResponse = PouchDB.Find.CreateIndexResponse;
 
-
-const retry = require('async-retry');
-
 export abstract class PouchCollection<T extends IModel<IDType>, IDType extends string = string> {
 
   _state = CollectionState.NEW;
+  private _initPromise?: Promise<void>;
   db: PouchDB.Database;
   collectionTypeName: string;
   validate: ClassValidate;
@@ -29,22 +27,15 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
   async checkInit(): Promise<void> {
     if (this._state === CollectionState.READY) return;
-    if (this._state === CollectionState.NEW) return this.runInit();
-    if (this._state === CollectionState.LOADING) {
-
-      // The most probable way we arrive here is if a previous attemot to init collection failed.
-      // We should wait for init's retries. Honestly this is an extreme case...
-      return retry(async bail => {
-        // if anything throws, we retry
-        if (PouchORM.LOGGING) console.log(`PouchORM waiting for initialization of ${this.constructor.name}...`);
-        if (this._state === CollectionState.READY)
-          throw new Error(`PouchCollection: Cannot perform operations on uninitialized collection ${this.constructor.name}`);
-
-      }, {
-        retries: 3,
-        minTimeout: 2000
+    if (!this._initPromise) {
+      this._initPromise = this.runInit().catch(error => {
+        this._state = CollectionState.NEW;
+        this._initPromise = undefined;
+        throw error;
       });
     }
+
+    return this._initPromise;
   }
 
   /**
@@ -70,14 +61,6 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
 
     await this.beforeInit();
 
-    // await retry(async bail => {
-    //     // if anything throws, we retry
-    //     console.log(`Initializing ${this.constructor.name}...`);
-    //
-    // }, {
-    //     retries: 3
-    // });
-
     await this.addIndex([]); // for only collection type
     await this.addIndex(['$timestamp']); // for collectionType and timestamp
 
@@ -93,16 +76,16 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
    */
   async addIndex(fields: (keyof T)[], name?: string): Promise<CreateIndexResponse<{}>> {
 
-    // append $collectionType to fields
-    fields.unshift('$collectionType');
+    // Prefix collection type without mutating the caller's array.
+    const indexFields = ['$collectionType', ...fields.filter(field => field !== '$collectionType')] as (keyof T)[];
     const res = await this.db.createIndex({
       index: {
-        fields: fields as string[],
+        fields: indexFields as string[],
         name
       },
     });
 
-    this._indexes.push({fields, name, indexId: (res as unknown as any)?.id });
+    this._indexes.push({fields: indexFields, name, indexId: (res as unknown as any)?.id });
 
     return res
   }
@@ -123,12 +106,14 @@ export abstract class PouchCollection<T extends IModel<IDType>, IDType extends s
     selector?: Partial<T> | Record<string, any>,
     opts?: { sort?: string[], limit?: number },
   ): Promise<T[]> {
-    const sel = selector || {};
     await this.checkInit();
-    sel.$collectionType = this.collectionTypeName;
+    const selectorWithCollection: Record<string, any> = {
+      ...(selector || {}),
+      $collectionType: this.collectionTypeName
+    };
 
     const {docs} = await this.db.find({
-      selector: sel,
+      selector: selectorWithCollection,
       sort: opts?.sort || undefined,// FIXME: ensure this works
       limit: opts?.limit
     });

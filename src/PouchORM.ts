@@ -6,7 +6,7 @@ import { getPouchDBWithPlugins } from './helpers';
 const PouchDB = getPouchDBWithPlugins();
 
 export type ORMSyncOptions = {
-  opts?: PouchDB.Configuration.DatabaseConfiguration,
+  opts?: PouchDB.Replication.SyncOptions,
   onChange?: (change: PouchDB.Replication.SyncResult<IModel>) => unknown
   onPaused?: (info: unknown) => unknown
   onError?: (error: unknown) => unknown
@@ -97,8 +97,11 @@ export class PouchORM {
    Stop user oplog handlers for the database
   */
   public static stopChangeListener(dbName: string) {
-    PouchORM.databases[dbName].changeListener?.cancel()
-    PouchORM.databases[dbName].changeListener = undefined
+    const dbSet = PouchORM.databases[dbName];
+    if (!dbSet) return;
+
+    dbSet.changeListener?.cancel()
+    dbSet.changeListener = undefined
   }
 
   /**
@@ -198,7 +201,7 @@ export class PouchORM {
     if (!dbSet) throw new Error(`Database does not exist: ${dbName}`);
 
     // First stop DB change listener
-    dbSet.changeListener.cancel();
+    dbSet.changeListener?.cancel();
 
     // then stop any active syncs (be it remote or local)
     if (PouchORM.activeSyncOperations[dbName]) {
