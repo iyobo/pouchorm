@@ -6,7 +6,7 @@ This reference describes the public PouchORM 4 exports. Examples import from `po
 
 ### `IModel<IDType>`
 
-Base interface for collection documents. `IDType` defaults to `string` and must extend `string`.
+Extend this interface when defining a model. `IDType` defaults to `string` and must be a type of string.
 
 ```ts
 interface IModel<IDType extends string = string> {
@@ -23,7 +23,7 @@ Application model interfaces should extend `IModel`.
 
 ### `PouchModel<T, IDType>`
 
-Base class that assigns the supplied object's enumerable properties to the new instance.
+Extend this class to create models from class instances. Its constructor copies the values you pass onto the new model.
 
 ```ts
 class Person extends PouchModel<Person> {
@@ -33,11 +33,11 @@ class Person extends PouchModel<Person> {
 const person = new Person({ name: "Ada" });
 ```
 
-Use class instances when relying on decorator metadata from `class-validator`.
+Use class instances when validating with `class-validator` decorators.
 
 ## `PouchCollection<T, IDType>`
 
-Abstract base class for a typed collection. `T` must extend `IModel<IDType>` and `IDType` defaults to `string`.
+Extend this class to define a collection. `T` must extend `IModel<IDType>`, and `IDType` defaults to `string`.
 
 ### Constructor
 
@@ -50,10 +50,10 @@ new Collection(
 ```
 
 - `dbName` identifies the PouchDB database.
-- `options` are passed to PouchDB only when that database name is first registered.
+- `options` are passed to PouchDB the first time that database is opened.
 - `validate` defaults to `ClassValidate.OFF`. If it is `OFF`, an enabled global `PouchORM.VALIDATE` setting still applies.
 
-The collection is registered immediately and initialized lazily on its first query or write.
+PouchORM creates the collection's indexes when you first query or write to it.
 
 ### Properties
 
@@ -63,7 +63,7 @@ The underlying `PouchDB.Database` instance.
 
 #### `collectionTypeName`
 
-The discriminator stored in `$collectionType`. It defaults to the collection class's runtime name.
+The value saved in `$collectionType`. By default, it is the collection's class name.
 
 #### `validate`
 
@@ -75,7 +75,7 @@ The collection-level `ClassValidate` mode.
 (item?: T) => IDType | Promise<IDType>
 ```
 
-Optional custom generator for documents without `_id`. The default is a UUID string.
+Optional function for creating IDs. PouchORM uses a UUID string when you do not provide one.
 
 ### Initialization hooks
 
@@ -101,7 +101,7 @@ Override for work that must run after all built-in indexes are ready.
 checkInit(): Promise<void>
 ```
 
-Ensures initialization is complete. Normal collection operations call this automatically. Concurrent callers wait on the same initialization attempt; a failed attempt can be retried by the next operation.
+Waits until the collection's indexes are ready. Collection operations call this automatically, so most applications never need to call it. When several operations start at once, they wait for the same setup work. If setup fails, the next operation tries again.
 
 ### Indexes
 
@@ -111,7 +111,7 @@ Ensures initialization is complete. Normal collection operations call this autom
 addIndex(fields: (keyof T)[], name?: string): Promise<CreateIndexResponse>
 ```
 
-Creates a Mango index. PouchORM prefixes `$collectionType` to the index without changing the supplied `fields` array. Use a stable name if you may remove the index later.
+Creates a Mango index that begins with `$collectionType`. It does not change the `fields` array you pass in. Give the index a stable name if you may remove it later.
 
 #### `removeIndex(name)`
 
@@ -123,7 +123,7 @@ Removes a named index that was added through the current collection instance. If
 
 ### Queries
 
-Selectors use PouchDB Mango syntax. PouchORM adds the collection discriminator without changing the supplied selector object.
+Selectors use PouchDB's Mango query format. PouchORM adds `$collectionType` to the query without changing the selector object you pass in.
 
 #### `find(selector?, options?)`
 
@@ -138,7 +138,7 @@ Returns all matching documents, optionally sorted or limited.
 
 #### `findOne(selector)`
 
-Returns the first matching document, or `null` at runtime when there is no match.
+Returns the first matching document, or `null` when there is no match.
 
 #### `findOrFail(selector?, options?)`
 
@@ -150,7 +150,7 @@ Returns the first match. Throws when there is no match.
 
 #### `findById(id)`
 
-Returns the matching document, or `null` at runtime when the ID is empty or missing.
+Returns the matching document, or `null` when the ID is empty or missing.
 
 #### `findByIdOrFail(id)`
 
@@ -166,9 +166,9 @@ upsert(item: T, deltaFunc?: (existing: T) => T): Promise<T>
 
 Creates a document or updates the document with the same `_id`.
 
-For an update, the default delta function replaces application fields while preserving the current `_rev`. Pass a custom function—or `UpsertHelper(item).merge`—to merge with the stored document.
+When the ID already exists, `upsert` replaces the document's fields and keeps its current `_rev`. Pass `UpsertHelper(item).merge` when you want to keep fields that are already stored. You can also pass your own merge function.
 
-When configured, class validation runs before metadata is assigned and before the document is written.
+When validation is enabled, PouchORM validates the document before adding its own fields and saving it.
 
 #### `remove(item)`
 
@@ -194,7 +194,7 @@ bulkUpsert(
 ): Promise<Array<PouchDB.Core.Response | PouchDB.Core.Error>>
 ```
 
-Assigns PouchORM metadata and passes the documents to `bulkDocs`. It does not run validation, load existing revisions, or invoke a delta function. Existing documents need a current `_rev`.
+Adds the fields PouchORM needs and passes the documents to `bulkDocs`. It does not validate documents, look up their latest revisions, or merge existing fields. Include the current `_rev` when updating an existing document.
 
 #### `bulkRemove(items)`
 
@@ -208,7 +208,7 @@ Marks the supplied objects as `_deleted` and passes them to `bulkDocs`.
 
 ### Change hooks
 
-The database's live changes feed dispatches documents to every registered collection whose discriminator matches.
+PouchORM watches each open database for changes and sends each changed document to the hooks for its collection.
 
 ```ts
 onChangeUpserted(item: T): Promise<void>
@@ -216,31 +216,31 @@ onChangeDeleted(item: T): Promise<void>
 onChangeError(error: Error): Promise<void>
 ```
 
-Override these methods to receive notifications. Hook completion is not awaited by the write that caused the change.
+Override these methods to receive notifications. The save or delete operation can finish before its hook finishes.
 
 ## `PouchORM`
 
-Static coordinator for database instances, changes feeds, validation defaults, and replication.
+Use these static methods and properties to configure PouchORM, control change notifications, sync databases, and delete data.
 
 ### Configuration
 
 #### `PouchORM.LOGGING`
 
-Boolean diagnostic logging flag. Defaults to `false`.
+Set to `true` to print diagnostic messages. Defaults to `false`.
 
 #### `PouchORM.VALIDATE`
 
-Global `ClassValidate` mode. Defaults to `OFF`.
+Default validation setting for all collections. Defaults to `OFF`.
 
 #### `PouchORM.adapter`
 
-Optional PouchDB adapter name. Set it before constructing the first collection for a database.
+Name of the PouchDB adapter to use. Set it before creating the first collection for a database.
 
 #### `PouchORM.PouchDB`
 
-The PouchDB constructor used internally. `pouchdb-find` is installed by default; use `.plugin(...)` to add other plugins.
+The PouchDB constructor used by PouchORM. The `pouchdb-find` plugin is already installed. Use `.plugin(...)` to add another plugin.
 
-### User metadata
+### Recording who saved a document
 
 #### `setUser(userId)`
 
@@ -248,19 +248,19 @@ The PouchDB constructor used internally. `pouchdb-find` is installed by default;
 PouchORM.setUser(userId: string): void
 ```
 
-Sets the value assigned to `$by` on later writes. If no user is set, `$by` is `...`. This is a last-writer label, not an audit log or authentication mechanism.
+Sets `$by` on documents saved after the call. If no user is set, `$by` is `...`. This records only the last supplied user ID; it is not an audit log or a way to authenticate users.
 
-### Changes feed control
+### Change notifications
 
 #### `beginChangeListener(dbName)`
 
-Starts a stopped changes feed for a registered database. Collection construction starts it automatically.
+Restarts change notifications for an open database. Creating a collection starts them automatically.
 
 #### `stopChangeListener(dbName)`
 
-Stops the changes feed for a registered database. Calling it for an unknown database is a no-op. Call `beginChangeListener` to resume notifications.
+Stops change notifications for an open database. It does nothing if the database is unknown. Call `beginChangeListener` to start notifications again.
 
-### Synchronization
+### Syncing databases
 
 #### `startSync(fromDB, toDB, options?)`
 
@@ -273,49 +273,49 @@ type ORMSyncOptions = {
 };
 ```
 
-Starts live, retrying, bidirectional synchronization. `fromDB` must already be registered. `toDB` may be a local name or remote database URL. Starting the same pair again cancels and replaces its previous sync operation.
+Keeps `fromDB` and `toDB` in sync. Changes move in both directions, and PouchDB retries after a connection problem. Create a collection that uses `fromDB` before calling this method. `toDB` can be a local database name or a remote URL. Calling `startSync` again for the same pair replaces the earlier sync.
 
 #### `stopSync(fromDB, toDB?)`
 
-Stops one destination sync, or every sync whose source is `fromDB` when `toDB` is omitted.
+Stops syncing one pair of databases. If you leave out `toDB`, it stops every sync that starts from `fromDB`.
 
-### Destructive operations
+### Deleting data
 
 #### `clearDatabase(dbName)`
 
-Marks every current document as deleted and returns the `bulkDocs` results. The database remains registered and its collection instances remain usable.
+Deletes every document without removing the database itself. Existing collections remain usable. The method returns PouchDB's result for each deleted document.
 
 #### `deleteDatabase(dbName)`
 
-Stops the database's changes feed and outgoing sync operations, destroys the PouchDB database, and unregisters it. Existing collection instances should not be reused.
+Stops change notifications and outgoing syncs, then permanently destroys the database and removes it from PouchORM. Do not reuse collections that pointed to the deleted database.
 
 ## Validation modes
 
 `ClassValidate` has four values:
 
-| Mode            | Behavior during `upsert`                                                               |
-| --------------- | -------------------------------------------------------------------------------------- |
-| `OFF`           | Do not validate.                                                                       |
-| `ON`            | Run validation and discard the result; log it only when `PouchORM.LOGGING` is enabled. |
-| `ON_AND_LOG`    | Run validation and log the result.                                                     |
-| `ON_AND_REJECT` | Call `validateOrReject` and reject invalid documents.                                  |
+| Mode            | Behavior during `upsert`                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| `OFF`           | Do not validate.                                                                                     |
+| `ON`            | Check the document. Save it even when invalid. Print errors only when `PouchORM.LOGGING` is enabled. |
+| `ON_AND_LOG`    | Check the document and print any errors. Save it even when invalid.                                  |
+| `ON_AND_REJECT` | Reject an invalid document without saving it.                                                        |
 
 Validation is not applied to `bulkUpsert`.
 
-## Metadata fields
+## Fields added by PouchORM
 
 PouchORM maintains these fields:
 
-| Field             | Purpose                                                   |
-| ----------------- | --------------------------------------------------------- |
-| `_id`             | PouchDB document ID; generated when absent.               |
-| `_rev`            | Current PouchDB revision.                                 |
-| `_deleted`        | PouchDB deletion marker.                                  |
-| `$timestamp`      | Millisecond Unix timestamp assigned by each upsert.       |
-| `$collectionType` | Collection discriminator used in every collection query.  |
-| `$by`             | Value last supplied through `PouchORM.setUser`, or `...`. |
+| Field             | Purpose                                                      |
+| ----------------- | ------------------------------------------------------------ |
+| `_id`             | PouchDB document ID; generated when absent.                  |
+| `_rev`            | Current PouchDB revision.                                    |
+| `_deleted`        | PouchDB deletion marker.                                     |
+| `$timestamp`      | Millisecond Unix timestamp assigned by each upsert.          |
+| `$collectionType` | Collection name used to keep different model types separate. |
+| `$by`             | Value last supplied through `PouchORM.setUser`, or `...`.    |
 
-Direct PouchDB document writes need a valid `$collectionType` to appear in collection queries.
+When saving through the raw PouchDB API, set `$collectionType` to the collection's class name. Otherwise, PouchORM queries will not find the document.
 
 ## `UpsertHelper`
 
@@ -327,7 +327,7 @@ helper.replace(existing); // item fields only, current _rev retained
 
 Both helpers are suitable as the second argument to `upsert`.
 
-## Sync type aliases
+## Types for sync callbacks
 
 ```ts
 type SyncResult<T> = PouchDB.Replication.SyncResult<T>;
