@@ -27,8 +27,9 @@
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "npm run lint -- --fix",
     "format:check": "prettier --check \"**/*.{ts,js,mjs,json,md,yml}\" --ignore-path .gitignore",
+    "test:docs": "tsc -p website/examples/tsconfig.json --noEmit",
     "test:package": "node scripts/test-package.mjs",
-    "verify": "npm run audit && npm run lint && npm run format:check && npm run build && npm run test:coverage -- --runInBand && npm run test:package",
+    "verify": "npm run audit && npm run lint && npm run format:check && npm run build && npm run test:docs && npm run test:coverage -- --runInBand && npm run test:package",
     "prepublishOnly": "npm run verify"
   },
   "files": [

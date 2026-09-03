@@ -41,6 +41,9 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
+website/node_modules/
+website/.docusaurus/
+website/build/
 
 # TypeScript v1 declaration files
 typings/
