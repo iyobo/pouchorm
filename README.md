@@ -38,10 +38,12 @@ interface Person extends IModel {
 
 class People extends PouchCollection<Person> {
   constructor(database = "app-data") {
+    // This stable value is stored with every People document.
     super({ database, collection: "people" });
   }
 
   async beforeInit(): Promise<void> {
+    // Create the index before collection queries begin.
     await this.addIndex(["age"], "people-by-age");
   }
 }
@@ -57,11 +59,13 @@ const ada = await people.upsert({
   age: 36,
 });
 
+// $gte is a Mango query operator; the second argument controls sorting.
 const adults = await people.find(
   { age: { $gte: 18 } },
   { sort: [{ age: "desc" }] },
 );
 
+// Reuse the saved _id and _rev when updating or removing a document.
 const updatedAda = await people.upsert({ ...ada, age: 37 });
 await people.remove(updatedAda);
 ```

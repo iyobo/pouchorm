@@ -65,6 +65,7 @@ class Tasks extends PouchCollection<Task> {
   constructor() {
     super({
       database: "app-data",
+      // Keep this persisted value stable even if the class is renamed.
       collection: "tasks",
       pouch: { adapter: "idb" },
       validate: ClassValidate.INHERIT,
@@ -86,6 +87,7 @@ Collection operations wait for initialization. Override `beforeInit` to create i
 
 ```ts
 async beforeInit(): Promise<void> {
+  // Include each field used to filter or sort this query shape.
   await this.addIndex(["completed", "$timestamp"], "tasks-by-state");
 }
 ```
@@ -113,6 +115,7 @@ class Tasks extends PouchCollection<TaskWithId, TaskId> {
 
   idGenerator = (task?: TaskWithId): TaskId => {
     if (!task) throw new Error("Task data is required");
+    // upsert calls this only when the document has no _id.
     return `task:${task.externalId}`;
   };
 }

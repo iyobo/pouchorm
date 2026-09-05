@@ -38,7 +38,9 @@ Then specify a direction:
 
 ```ts
 const oldestFirst = await people.find(
+  // Select every non-negative age.
   { age: { $gte: 0 } },
+  // Return at most 20 matches, ordered from oldest to youngest.
   { sort: [{ age: "desc" }], limit: 20 },
 );
 ```
@@ -48,6 +50,7 @@ String entries such as `"age"` mean ascending order. PouchDB requires all fields
 ## Find one document
 
 ```ts
+// findOne returns null rather than throwing when there is no match.
 const ada = await people.findOne({ name: "Ada Lovelace" });
 ```
 
@@ -66,6 +69,7 @@ const person = await people.findById(personId);
 Use the fail variants when absence should stop the current operation:
 
 ```ts
+// These variants make a missing result an error.
 const person = await people.findByIdOrFail(personId);
 const matches = await people.findOrFail({ age: { $gte: 18 } });
 ```

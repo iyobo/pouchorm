@@ -11,6 +11,7 @@ description: Use upsert, merge partial updates, handle conflicts, and remove doc
 `upsert` generates an ID when the input has none, adds metadata, writes through PouchDB, and returns the saved document:
 
 ```ts
+// Omitting _id creates a document with a generated UUIDv7.
 const created = await people.upsert({
   name: "Grace Hopper",
   age: 85,
@@ -24,6 +25,7 @@ PouchORM does not add `_id`, `_rev`, or metadata to the object passed by the cal
 Pass an existing `_id` to update that document:
 
 ```ts
+// Supplying the saved _id updates that document rather than creating one.
 const updated = await people.upsert({
   _id: created._id,
   name: "Grace Hopper",
@@ -46,6 +48,7 @@ const patch: Person = {
   age: 86,
 };
 
+// merge keeps stored fields that are absent from patch.
 const merged = await people.upsert(patch, UpsertHelper(patch).merge);
 ```
 
@@ -69,12 +72,14 @@ const saved = await people.bulkUpsert([
 Remove a saved document with its `_id` and `_rev`:
 
 ```ts
+// Use the saved object so remove receives both _id and the current _rev.
 await people.remove(saved[0]);
 ```
 
 Remove by ID when the caller does not already have the current revision:
 
 ```ts
+// removeById reads the current revision before deleting.
 const removed = await people.removeById(personId);
 ```
 
