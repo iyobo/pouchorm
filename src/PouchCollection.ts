@@ -239,11 +239,31 @@ export abstract class PouchCollection<
     return true;
   }
 
-  async remove(item: T): Promise<void> {
+  private async getDocumentForRemoval(item: T): Promise<T> {
     if (!item?._id || !item._rev) {
       throw new Error("Removing a document requires both _id and _rev.");
     }
-    await this.db.remove(item._id, item._rev);
+
+    const document = await this.db.get<T>(item._id);
+    if (document.$collectionType !== this.collectionName) {
+      const owner = document.$collectionType ?? "unknown";
+      throw new Error(
+        `Document ${item._id} belongs to collection ${owner}, not ${this.collectionName}.`,
+      );
+    }
+    return document;
+  }
+
+  private prepareDeletion(document: T, revision: string): T {
+    const deleted = this.cloneModel(document);
+    deleted._rev = revision;
+    deleted._deleted = true;
+    return deleted;
+  }
+
+  async remove(item: T): Promise<void> {
+    const document = await this.getDocumentForRemoval(item);
+    await this.db.put(this.prepareDeletion(document, item._rev!));
   }
 
   private cloneModel(item: T): T {
@@ -326,7 +346,18 @@ export abstract class PouchCollection<
   }
 
   async bulkRemove(items: T[]): Promise<PouchBulkResult[]> {
-    const deleted = items.map((item) => ({ ...item, _deleted: true }));
+    const documents: T[] = [];
+    for (const item of items) {
+      try {
+        documents.push(await this.getDocumentForRemoval(item));
+      } catch (error) {
+        if (!isPouchError(error, 404)) throw error;
+        documents.push(item);
+      }
+    }
+    const deleted = documents.map((document, index) =>
+      this.prepareDeletion(document, items[index]._rev!),
+    );
     return this.db.bulkDocs(deleted);
   }
 

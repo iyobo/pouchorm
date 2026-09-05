@@ -1,5 +1,11 @@
 # Changelog
 
+## 5.1.1 — 2026-09-05
+
+- Prevent a collection from deleting documents that belong to another collection in the same database.
+- Keep collection metadata on PouchORM deletion records so `onChangeDeleted` runs for the owning collection.
+- Check an entire `bulkRemove` input for collection ownership before submitting any deletions.
+
 ## 5.1.0 — 2026-09-03
 
 - Generate new default document IDs with UUIDv7 instead of UUIDv4. Existing IDs and custom ID generators remain supported.

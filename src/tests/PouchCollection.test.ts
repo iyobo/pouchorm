@@ -11,7 +11,7 @@ import {
   Person,
   PersonCollection,
 } from "./util/TestClasses";
-import { makePerson, waitFor } from "./util/testHelpers";
+import { makePerson, waitFor, waitUntil } from "./util/testHelpers";
 
 const databaseName = "pouchorm_collection_tests";
 PouchORM.PouchDB.plugin(memoryAdapter);
@@ -295,6 +295,102 @@ describe("PouchCollection", () => {
         true,
       );
       await expect(people.find()).resolves.toEqual([]);
+    });
+
+    it("returns per-document conflicts when bulk removal cannot find a document", async () => {
+      await expect(
+        people.bulkRemove([
+          {
+            _id: "missing",
+            _rev: "1-notreal",
+            name: "Missing",
+            age: 0,
+          },
+        ]),
+      ).resolves.toEqual([
+        expect.objectContaining({
+          id: "missing",
+          status: 409,
+          name: "conflict",
+        }),
+      ]);
+    });
+
+    it("rejects removing a document owned by another collection", async () => {
+      const account = await accounts.upsert(
+        new Account({ name: "Cid", age: 32 }),
+      );
+
+      await expect(people.remove(account)).rejects.toThrow(
+        `Document ${account._id} belongs to collection accounts, not people.`,
+      );
+      await expect(accounts.findById(account._id!)).resolves.toMatchObject({
+        _id: account._id,
+        name: "Cid",
+      });
+    });
+
+    it("rejects a bulk removal before deleting documents from mixed collections", async () => {
+      const person = await people.upsert({ name: "Cloud", age: 28 });
+      const account = await accounts.upsert(
+        new Account({ name: "Tifa", age: 25 }),
+      );
+
+      await expect(people.bulkRemove([person, account])).rejects.toThrow(
+        `Document ${account._id} belongs to collection accounts, not people.`,
+      );
+      await expect(people.findById(person._id!)).resolves.toMatchObject({
+        _id: person._id,
+      });
+      await expect(accounts.findById(account._id!)).resolves.toMatchObject({
+        _id: account._id,
+      });
+    });
+
+    it("routes deletions to the owning collection hook", async () => {
+      const saved = await people.upsert({ name: "Aerith", age: 22 });
+      const inputSnapshot = { ...saved };
+      const deleted = jest.spyOn(people, "onChangeDeleted");
+      const foreignDeleted = jest.spyOn(accounts, "onChangeDeleted");
+
+      await people.remove(saved);
+      await waitUntil(() => deleted.mock.calls.length === 1);
+
+      expect(saved).toEqual(inputSnapshot);
+      expect(deleted).toHaveBeenCalledWith(
+        expect.objectContaining({
+          _id: saved._id,
+          _deleted: true,
+          $collectionType: "people",
+        }),
+      );
+      expect(foreignDeleted).not.toHaveBeenCalled();
+    });
+
+    it("keeps deletion hooks working for removeById and bulkRemove", async () => {
+      const saved = await people.bulkUpsert([
+        { name: "Cloud", age: 28 },
+        { name: "Barret", age: 35 },
+        { name: "Tifa", age: 25 },
+      ]);
+      const deleted = jest.spyOn(people, "onChangeDeleted");
+
+      await people.removeById(saved[0]._id!);
+      await people.bulkRemove(saved.slice(1));
+      await waitUntil(() => deleted.mock.calls.length === 3);
+
+      expect(deleted).toHaveBeenCalledTimes(3);
+    });
+
+    it("does not delete a newer revision through a stale document", async () => {
+      const saved = await people.upsert({ name: "Cloud", age: 28 });
+      const updated = await people.upsert({ ...saved, age: 29 });
+
+      await expect(people.remove(saved)).rejects.toMatchObject({ status: 409 });
+      await expect(people.findById(updated._id!)).resolves.toMatchObject({
+        age: 29,
+        _rev: updated._rev,
+      });
     });
 
     it("returns false when removeById cannot find the document", async () => {

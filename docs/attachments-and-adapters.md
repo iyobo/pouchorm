@@ -75,4 +75,8 @@ The first call that opens a named database determines its constructor options.
 
 ## Write raw documents carefully
 
-Raw writes bypass collection metadata and validation. If a document must appear in collection queries, set `$collectionType` to the exact `collection.collectionName` value. Prefer `upsert` for application documents unless the raw operation is intentional.
+Raw writes bypass collection metadata and validation. Raw deletions also
+bypass collection ownership checks and may not call `onChangeDeleted`. If a
+document must appear in collection queries, set `$collectionType` to the
+exact `collection.collectionName` value. Prefer collection methods for
+application documents unless the raw operation is intentional.

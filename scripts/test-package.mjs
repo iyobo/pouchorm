@@ -136,6 +136,19 @@ PouchDB.plugin(PouchFind);
 class Notes extends PouchCollection {
   constructor(database, validate) {
     super({ database, collection: 'notes', validate });
+    this.deleted = new Promise(resolve => {
+      this.resolveDeleted = resolve;
+    });
+  }
+
+  async onChangeDeleted(item) {
+    this.resolveDeleted(item);
+  }
+}
+
+class Archives extends PouchCollection {
+  constructor(database) {
+    super({ database, collection: 'archives' });
   }
 }
 
@@ -149,6 +162,34 @@ class Notes extends PouchCollection {
   const found = await notes.findById(saved._id);
   if (!found || found.title !== 'Packaged library') {
     throw new Error('The installed package did not complete a write and read.');
+  }
+
+  const archives = new Archives(database);
+  const archived = await archives.upsert({ title: 'Archived note' });
+  try {
+    await notes.remove(archived);
+    throw new Error('A collection deleted a document owned by another collection.');
+  } catch (error) {
+    if (!String(error.message).includes('belongs to collection archives, not notes')) {
+      throw error;
+    }
+  }
+  if (!(await archives.findById(archived._id))) {
+    throw new Error('A rejected cross-collection deletion removed the document.');
+  }
+
+  await notes.remove(saved);
+  const deleted = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('The deletion hook did not run.'));
+    }, 1000);
+    notes.deleted.then(item => {
+      clearTimeout(timeout);
+      resolve(item);
+    }, reject);
+  });
+  if (deleted._id !== saved._id || deleted.$collectionType !== 'notes') {
+    throw new Error('The deletion hook received the wrong document.');
   }
   await PouchORM.deleteDatabase(database);
 
