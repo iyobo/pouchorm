@@ -33,6 +33,8 @@ Help a TypeScript developer decide whether PouchORM fits an application, install
 
 - Use sentence case and describe observable behavior.
 - Avoid promotional claims, anthropomorphic phrasing, and shorthand such as “live, retrying, bidirectional synchronization.”
+- Comment examples where PouchORM-specific intent or a non-obvious consequence
+  needs explanation; do not narrate syntax that is already clear from the code.
 - Put requirements and destructive-operation warnings next to the relevant action.
 - Give every error or migration warning a concrete next step.
 

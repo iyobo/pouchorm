@@ -16,12 +16,14 @@ class People extends PouchCollection<Person> {
   constructor() {
     super({
       database: "app-data",
+      // Stored with each document, so keep this name stable.
       collection: "people",
     });
   }
 }
 
 const people = new People();
+// No _id means upsert creates a document with a UUIDv7.
 const ada = await people.upsert({
   name: "Ada Lovelace",
   age: 36,

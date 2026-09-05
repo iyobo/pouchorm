@@ -18,8 +18,10 @@ import { PouchORM } from "pouchorm";
 const remote = "https://example.com/app-data";
 
 const operation = PouchORM.startSync("local-data", remote, {
+  // These options are passed through to PouchDB synchronization.
   options: { batch_size: 100 },
   onChange(change) {
+    // "push" means local to remote; "pull" means remote to local.
     console.log("Sync direction:", change.direction);
   },
   onPaused(info) {
@@ -44,6 +46,7 @@ Completion and terminal errors remove the operation from PouchORM's registry.
 ## Inspect or stop an operation
 
 ```ts
+// Inspect the existing handle without starting another operation.
 const active = PouchORM.getActiveSync("local-data", remote);
 
 PouchORM.stopSync("local-data", remote); // stop this pair

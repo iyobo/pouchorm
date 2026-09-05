@@ -20,6 +20,7 @@ Register the module once, before saving a validated model:
 import * as classValidator from "class-validator";
 import { PouchORM } from "pouchorm";
 
+// Register once before the first collection performs validation.
 PouchORM.useClassValidator(classValidator);
 ```
 
@@ -45,6 +46,7 @@ class People extends PouchCollection<Person> {
     super({
       database: "app-data",
       collection: "people",
+      // Invalid documents reject without reaching PouchDB.
       validate: ClassValidate.ON_AND_REJECT,
     });
   }
@@ -54,6 +56,7 @@ class People extends PouchCollection<Person> {
 Pass a class instance when saving so decorator metadata remains available:
 
 ```ts
+// Constructing Person preserves the decorators used by class-validator.
 await new People().upsert(new Person({ name: "Ada", age: 36 }));
 ```
 

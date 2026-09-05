@@ -34,10 +34,12 @@ interface Person extends IModel {
 
 class People extends PouchCollection<Person> {
   constructor(database = "app-data") {
+    // PouchORM stores this explicit name in $collectionType.
     super({ database, collection: "people" });
   }
 
   async beforeInit(): Promise<void> {
+    // Add indexes needed by sorted queries before the collection is ready.
     await this.addIndex(["age"], "people-by-age");
   }
 }
@@ -52,6 +54,7 @@ The `collection` value is stored in `$collectionType` on every document. Keep it
 `upsert` creates a document without an `_id` and updates a document that already has one:
 
 ```ts
+// With no _id, upsert generates a UUIDv7 for this new document.
 const ada = await people.upsert({
   name: "Ada Lovelace",
   age: 36,
@@ -65,6 +68,7 @@ The returned document includes its PouchDB `_id` and `_rev` values along with Po
 Use a Mango selector. PouchORM adds the collection name to the selector:
 
 ```ts
+// $gte means "greater than or equal to" in a Mango selector.
 const adults = await people.find(
   { age: { $gte: 18 } },
   { sort: [{ age: "desc" }] },
@@ -78,6 +82,7 @@ Call `find()` without a selector to return every document in the collection.
 Pass a saved `_id` to update that document. The default update replaces stored application fields:
 
 ```ts
+// Spreading ada carries its current _id and _rev into the update.
 const updatedAda = await people.upsert({ ...ada, age: 37 });
 await people.remove(updatedAda);
 ```

@@ -13,6 +13,7 @@ PouchORM exposes the underlying PouchDB database and constructor for features th
 Every collection has a `db` property:
 
 ```ts
+// Attachment writes require the document's current revision.
 await people.db.putAttachment(
   person._id!,
   "avatar.png",
@@ -34,6 +35,7 @@ PouchDB is a peer dependency, so the application and PouchORM use the same const
 import myPlugin from "pouchdb-example-plugin";
 import { PouchORM } from "pouchorm";
 
+// Install plugins before any collection opens a database.
 PouchORM.PouchDB.plugin(myPlugin);
 ```
 
@@ -47,6 +49,7 @@ Some platforms use a custom PouchDB constructor or a selected set of adapters:
 import CustomPouchDB from "pouchdb-core";
 import { PouchORM } from "pouchorm";
 
+// Configure one constructor for all databases managed by PouchORM.
 PouchORM.usePouchDB(CustomPouchDB);
 ```
 
@@ -57,6 +60,7 @@ Call `usePouchDB` before any collection or database is opened. PouchORM rejects 
 Set the default adapter before opening a database:
 
 ```ts
+// Register the adapter before selecting it by name.
 PouchORM.PouchDB.plugin(memoryAdapter);
 PouchORM.adapter = "memory";
 ```
