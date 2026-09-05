@@ -2,16 +2,7 @@ import PouchDB from "pouchdb";
 import memoryAdapter from "pouchdb-adapter-memory";
 import { PouchORM } from "../PouchORM";
 import { PersonCollection } from "./util/TestClasses";
-
-const waitUntil = async (
-  condition: () => boolean | Promise<boolean>,
-): Promise<void> => {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (await condition()) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  throw new Error("Condition was not met before the test timeout.");
-};
+import { waitUntil } from "./util/testHelpers";
 
 PouchORM.PouchDB.plugin(memoryAdapter);
 PouchORM.adapter = "memory";

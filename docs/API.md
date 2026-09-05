@@ -208,6 +208,8 @@ remove(item: T): Promise<void>
 ```
 
 Removes a saved document. It throws when `_id` or `_rev` is absent.
+Before deleting, it confirms that the stored document belongs to this
+collection. A document from another collection is not deleted.
 
 #### `removeById(id)`
 
@@ -223,7 +225,11 @@ Looks up and removes a document. Returns `false` when it is missing.
 bulkRemove(items: T[]): Promise<PouchBulkResult[]>
 ```
 
-Copies the documents, marks the copies as deleted, and passes them to PouchDB. The supplied objects are not changed.
+Confirms that every stored document belongs to this collection before passing
+the deletion batch to PouchDB. A collection mismatch rejects before any
+deletion is submitted. PouchDB may still return a mixture of successes and
+revision conflicts because its batch is not transactional. The supplied
+objects are not changed.
 
 ### Change hooks
 
@@ -234,6 +240,11 @@ onChangeError(error: Error): Promise<void>
 ```
 
 Override these methods to receive changes for this collection. If an upsert or delete hook rejects, PouchORM calls `onChangeError`. If `onChangeError` itself rejects, PouchORM suppresses that rejection to avoid an unhandled promise rejection.
+
+Deletion methods retain the stored collection name so `onChangeDeleted`
+receives deletions performed through PouchORM. A deletion created through raw
+PouchDB or an older PouchORM client may omit that name and cannot be routed to a
+collection safely.
 
 ## `PouchORM`
 
@@ -370,7 +381,10 @@ Validation applies to `upsert` and `bulkUpsert`. Install and register `class-val
 | `$collectionType` | Stable collection name supplied to the constructor.       |
 | `$by`             | Last value supplied through `PouchORM.setUser`, or `...`. |
 
-When writing through `collection.db`, set `$collectionType` to `collection.collectionName` if the document should appear in that collection's queries.
+When writing through `collection.db`, set `$collectionType` to
+`collection.collectionName` if the document should appear in that
+collection's queries. Raw writes and deletions bypass PouchORM validation,
+collection ownership checks, and deletion metadata handling.
 
 ## `UpsertHelper`
 

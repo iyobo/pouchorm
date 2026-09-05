@@ -56,6 +56,13 @@ Call `PouchORM.usePouchDB` before creating any collection or calling `openDataba
 
 Collection instances retain a reference to the destroyed database. Create new collection instances if the application intentionally recreates that database.
 
+## A deletion hook does not run
+
+Use `remove`, `removeById`, or `bulkRemove` when the deletion should reach
+`onChangeDeleted`. A raw PouchDB deletion or a deletion replicated from an
+older client may not contain `$collectionType`, so PouchORM cannot determine
+which collection should receive it.
+
 ## Synchronization stops with an authentication error
 
 PouchORM forwards PouchDB synchronization errors; it does not authenticate the remote database. Check the remote database policy and the authentication mechanism supported by the selected PouchDB runtime. Avoid credentials in URLs that may be logged.

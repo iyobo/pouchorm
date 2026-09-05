@@ -80,4 +80,16 @@ const removed = await people.removeById(personId);
 
 `removeById` returns `false` when the document is missing.
 
-Use `bulkRemove` for several saved documents. It copies the inputs before adding PouchDB deletion markers, so the caller's objects are unchanged.
+PouchORM checks the stored collection name before deleting. Passing a document
+from another collection rejects the operation and leaves that document stored.
+
+Use `bulkRemove` for several saved documents. PouchORM checks that every
+stored document belongs to the collection before submitting the batch. It
+copies the documents before marking them as deleted, so the caller's objects
+are unchanged. The PouchDB batch is not transactional; revision conflicts are
+reported separately for each document.
+
+Deletions made through these collection methods retain their collection name,
+allowing `onChangeDeleted` to run for the owning collection. Direct
+`collection.db` deletions bypass these checks and may not produce a
+collection deletion hook.
